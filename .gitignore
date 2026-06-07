@@ -1,0 +1,14 @@
+# local Claude Code settings — not for the public repo
+.claude/
+
+__pycache__/
+*.pyc
+.venv/
+venv/
+.DS_Store
+# data lives on the external SSD via PUBMEDQA_DATA, but ignore any local copy:
+pubmedqa_data/
+*.sqlite
+*.sqlite-*
+lancedb/
+*.xml.gz
