@@ -11,6 +11,7 @@ RAW_DIR = DATA_ROOT / "raw"
 SQLITE_PATH = DATA_ROOT / "pubmed.sqlite"
 LANCE_DIR = DATA_ROOT / "lancedb"
 LANCE_TABLE = "articles"
+LANCE_VERIFY_TABLE = "ncbi_verify"   # Phase 0b: downloaded NCBI vectors
 
 # --- Models (MedCPT; PIN the revision for production reproducibility) --------
 ARTICLE_ENCODER = "ncbi/MedCPT-Article-Encoder"
@@ -39,6 +40,10 @@ IMPACT_FLOOR = 0.10   # cold-start floor: new/zero-citation papers still surface
 # --- External sources --------------------------------------------------------
 PUBMED_BASELINE_BASE = "https://ftp.ncbi.nlm.nih.gov/pubmed/baseline/"
 ICITE_API = "https://icite.od.nih.gov/api/pubs"
+# Precomputed MedCPT article embeddings: embeds_chunk_{0..37}.npy (N~1M x 768),
+# pmids_chunk_{i}.json (aligned PMID list), pubmed_chunk_{i}.json (pmid -> {d,t,a,m}).
+MEDCPT_EMBEDDINGS_BASE = "https://ftp.ncbi.nlm.nih.gov/pub/lu/MedCPT/pubmed_embeddings/"
+EFETCH_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi"
 
 
 def device() -> str:

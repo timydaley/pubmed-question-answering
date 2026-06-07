@@ -63,11 +63,25 @@ python scripts/p0_ask.py --no-llm "statins and dementia"   # retrieval only, no 
 - [ ] Note query latency and peak memory — confirms the §7 budget.
 
 ### Phase 0b — verify the precomputed-download path (before full build)
-Download a chunk of NCBI's precomputed MedCPT vectors
-(`ftp.ncbi.nlm.nih.gov/pub/lu/MedCPT/pubmed_embeddings/`), load into LanceDB, and embed
-a query with the **local** MedCPT Query-Encoder. Confirm nearest neighbours are sane —
-this proves the downloaded article vectors share a space with local query vectors. Pin
-`MEDCPT_REVISION`. Then choose PQ params via a recall study (`vectorstore.build_index`).
+NCBI publishes MedCPT vectors for all of PubMed as 38 chunks
+(`embeds_chunk_{i}.npy` + `pmids_chunk_{i}.json`) at
+`ftp.ncbi.nlm.nih.gov/pub/lu/MedCPT/pubmed_embeddings/`. This script downloads one chunk
+and runs three checks:
+
+```bash
+python scripts/p0b_verify_precomputed.py --list                 # see the chunks
+python scripts/p0b_verify_precomputed.py --chunk 0 --rows 50000 # ~1-3 GB download
+```
+1. **Alignment** — re-embeds sample abstracts with the *local* MedCPT article encoder and
+   compares to NCBI's vectors (cosine ~0.99 ⇒ same space / revision matches).
+2. **Query-space** — embeds sample questions with the *local* query encoder and retrieves
+   from the downloaded vectors; titles should be on-topic.
+3. **PQ recall** — sweeps IVF-PQ `nprobes` vs. exact search to pick the smallest setting
+   with ≥95% recall (the params for the full-corpus index).
+
+Pin `MEDCPT_REVISION` in `config.py` so the full build matches what you verified here.
+(`pubmed_chunk_{i}.json` also holds the title/abstract text — handy to populate SQLite at
+full-build time instead of parsing baseline XML.)
 
 ---
 
@@ -89,7 +103,8 @@ src/pubmedqa/
   retrieve.py      BM25 + dense -> RRF -> bounded citation re-score
   generate.py      Ollama answer + [PMID] citation validation
 scripts/
-  p0_download_sample.py  p0_build_index.py  p0_ask.py  runpod_embed_medcpt.py
+  p0_download_sample.py  p0_build_index.py  p0_ask.py
+  p0b_verify_precomputed.py  runpod_embed_medcpt.py
 ```
 
 ## Config knobs (`src/pubmedqa/config.py`)

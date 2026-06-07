@@ -25,6 +25,17 @@ def iter_articles(xml_gz_path):
         del context
 
 
+def parse_efetch_xml(xml_bytes):
+    """Parse an E-utilities efetch PubmedArticleSet (bytes) into record dicts."""
+    root = etree.fromstring(xml_bytes)
+    out = []
+    for el in root.findall(".//PubmedArticle"):
+        rec = _parse_article(el)
+        if rec is not None:
+            out.append(rec)
+    return out
+
+
 def _parse_article(elem):
     pmid_el = elem.find(".//MedlineCitation/PMID")
     if pmid_el is None or not pmid_el.text:
