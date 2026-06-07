@@ -95,3 +95,6 @@ scripts/
 ## Config knobs (`src/pubmedqa/config.py`)
 `PUBMEDQA_DATA` (SSD path) · `PUBMEDQA_LLM` (default `llama3.1:8b`) · `ALPHA` (citation
 weight) · `IMPACT_FLOOR` (cold-start) · `USE_CROSS_ENCODER` (off in v1) · `MEDCPT_REVISION`.
+
+## License
+[MIT](LICENSE).
