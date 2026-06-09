@@ -493,16 +493,43 @@ caching.
 
 ## 11. Evaluation
 
-- **Retrieval:** BEIR/biomedical IR sets (NFCorpus, TREC-COVID, BioASQ) — nDCG@k / Recall@k to tune
-  fusion + rerank. (IR sets with relevance labels — distinct from the QA benchmark.)
-- **End-to-end QA:** the **~50-question benchmark sourced in Phase 0** (ground-truth consensus
-  answers; document scope/limitations). Measure faithfulness (every claim cites a *retrieved* PMID),
-  citation hallucination rate, consensus alignment.
-- **Ablations:** dense-only vs. hybrid vs. +rerank vs. +citation-weighting; `α/β/floor` sweep;
-  **fp16 vs int8 recall**; 8B vs 14B LLM citation fidelity. Justifies each stage and the laptop
-  trade-offs.
-- **Hardware metrics tracked throughout:** embedding docs/sec, peak unified-memory, query latency,
-  thermal/throttle behavior on sustained ingest.
+Three layers + a contamination policy. **Datasets to use, and how much to trust them, depend on what
+each component already saw** — see the contamination map below.
+
+**Layer 1 — Retrieval (IR metrics: Recall@k, nDCG@k, MRR).**
+- Use **BioASQ qrels** (gold relevant PMIDs; in-corpus since we index full PubMed) to tune fusion.
+- ⚠️ **Use a recent BioASQ year (post-2023)** as the *clean* held-out signal — BioASQ/TREC-COVID/
+  NFCorpus were MedCPT's own zero-shot eval sets, so older-year recall flatters MedCPT.
+
+**Layer 2 — End-to-end QA accuracy (automatic, exact-match).**
+- **MIRAGE** suite (PubMedQA, BioASQ-Y/N, MedQA, MedMCQA, MMLU-Med) → accuracy. Our corpus *is* the
+  MedRAG PubMed snapshot, so numbers are comparable to the published MedRAG results.
+- **Report RAG − no-RAG delta, not absolutes** — the LLM (Llama 3.1) likely memorized MedQA/MMLU/
+  PubMedQA in pretraining, which inflates the no-RAG baseline. Lean on PubMedQA/BioASQ (answer hinges
+  on a *retrievable* abstract). Build a small **fresh probe set from post-LLM-cutoff papers** for a
+  genuinely uncontaminated signal.
+
+**Layer 3 — Citation-weighting ablation (the differentiator).**
+- **α-sweep `[0,0.3]` + ablation ladder** (dense → +BM25 → +RRF → +citation-weighting → +rerank).
+- **Robust to contamination by construction:** a *relative* comparison with everything fixed except α
+  — MedCPT-eval-overlap and LLM-memorization are constant across α and cancel, so the accuracy-vs-α
+  *curve shape* is trustworthy even on "contaminated" sets. Objective: maximize consensus-agreement
+  subject to recall@5 > 80%.
+
+**Faithfulness & grounding.**
+- **Citation hallucination rate** (already computed): % of cited `[PMID]`s in the retrieved set.
+- **Local LLM-judge** scoped to *grounding* (is each claim supported by a shown retrieved abstract),
+  not correctness — more objective, less judge-contamination. Use a **different/larger local model**
+  than the one judged to avoid self-preference; treat results as directional.
+
+**Contamination map (verified against the MedCPT paper):**
+- MedCPT was **trained only on PubMed search logs** — no benchmark in training.
+- MedCPT was **zero-shot evaluated on BioASQ, TREC-COVID, NFCorpus** (BEIR-bio) → optimistic there.
+- MedCPT **never touched PubMedQA/MedQA/MedMCQA/MMLU-Med** (it's a retriever) → those are MedCPT-clean.
+- The **LLM** is the dominant contamination risk for QA accuracy → mitigated via delta + fresh probe.
+
+**Hardware metrics tracked throughout:** peak unified-memory, query latency, ANN recall vs. exact,
+thermal/throttle on sustained ingest.
 
 ---
 
