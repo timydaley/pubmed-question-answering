@@ -531,6 +531,19 @@ each component already saw** — see the contamination map below.
 **Hardware metrics tracked throughout:** peak unified-memory, query latency, ANN recall vs. exact,
 thermal/throttle on sustained ingest.
 
+**Planned `eval/` harness (build order = differentiator first):**
+| File | Purpose |
+|---|---|
+| `eval/datasets.py` | shared loaders (MIRAGE suite, BioASQ qrels, fresh probe set) |
+| `eval/alpha_sweep.py` | **α-sweep + ablation ladder** — the core, contamination-immune experiment |
+| `eval/qa_accuracy.py` | MIRAGE accuracy, reported as **RAG − no-RAG delta** per dataset |
+| `eval/retrieval_recall.py` | Recall@k / nDCG against a **recent (post-2023) BioASQ** year |
+| `eval/judge.py` | local LLM-judge scoped to **grounding** (different/larger model than judged) |
+| `eval/probe_consensus.py` | small **post-LLM-cutoff** consensus probe set (uncontaminated) |
+
+Recommended first build: `eval/datasets.py` + `eval/alpha_sweep.py` — validates the project's
+premise with the least exposure to contamination.
+
 ---
 
 ## 12. Read-only critique cycle
