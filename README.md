@@ -1,23 +1,22 @@
-# PubMed QA — local, citation-weighted question answering
+# PubMed QA — local, evidence-aware question answering
 
-Ask a medical/scientific question; the tool retrieves relevant PubMed papers —
-**weighted toward higher-impact (more-cited) work** to bias answers toward scientific
-consensus — and a **local LLM** answers with inline `[PMID]` citations. Everything runs
-locally on an Apple-Silicon Mac. See [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md)
+Ask a medical/scientific question; the tool retrieves relevant PubMed papers,
+applies a **small evidence/citation-aware ranking boost**, and a **local LLM** answers
+with inline `[PMID]` citations. The system is designed to run **fully offline at query time** on an Apple-Silicon Mac. See [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md)
 for the full design and rationale.
 
 **Stack (v1 — fast & lean):** MedCPT embeddings · LanceDB (vectors) · SQLite + FTS5
-(BM25, text, citations) · RRF hybrid retrieval · iCite RCR citation weighting ·
-Ollama 8B. No servers; cross-encoder rerank deferred to Phase 3.
+(BM25, text, citations) · RRF hybrid retrieval · bounded citation/evidence boost ·
+Ollama 8B. No servers; cross-encoder rerank deferred to a later phase.
 
 ---
 
 ## Phase 0 — prove the pipeline end-to-end
 
 Phase 0 indexes **one PubMed baseline file** (~tens of thousands of abstracts),
-embedding **locally** with MedCPT — enough to validate the whole loop on the laptop.
+embedding **locally** with MedCPT — enough to validate the core loop on the laptop.
 (At scale, the embed step is replaced by *downloaded* precomputed vectors; everything
-else is identical — plan §3.)
+else is intended to stay aligned with the production path — plan §4.)
 
 ### 0. Prerequisites
 - Python 3.11+
@@ -57,10 +56,9 @@ python scripts/p0_ask.py --no-llm "statins and dementia"   # retrieval only, no 
 
 ### Phase 0 success criteria (from the plan)
 - [ ] Retrieved papers are on-topic (dense + BM25 + RRF working).
-- [ ] Citation weighting visibly nudges higher-RCR papers up (compare `--no-llm` output
-      with `ALPHA=0` vs `0.1` in `config.py`).
+- [ ] The bounded evidence/citation boost visibly but modestly changes ranking.
 - [ ] LLM answer cites only retrieved `[PMID]`s (citation-validation prints no warning).
-- [ ] Note query latency and peak memory — confirms the §7 budget.
+- [ ] Query latency and peak memory are acceptable on the target laptop.
 
 ### Phase 0b — verify the precomputed-download path (before full build)
 NCBI publishes MedCPT vectors for all of PubMed as 38 chunks
@@ -85,12 +83,6 @@ full-build time instead of parsing baseline XML.)
 
 ---
 
-## Cloud embedding / backfill (RunPod) — plan §3.6
-`scripts/runpod_embed_medcpt.py` runs **on a RunPod pod** to embed a custom corpus or
-**backfill papers newer than NCBI's snapshot**. It writes resumable Parquet shards to the
-network volume; transfer them home and load into LanceDB. This is batch *inference*, not
-training.
-
 ## Layout
 ```
 src/pubmedqa/
@@ -104,12 +96,13 @@ src/pubmedqa/
   generate.py      Ollama answer + [PMID] citation validation
 scripts/
   p0_download_sample.py  p0_build_index.py  p0_ask.py
-  p0b_verify_precomputed.py  runpod_embed_medcpt.py
+  p0b_verify_precomputed.py
 ```
 
 ## Config knobs (`src/pubmedqa/config.py`)
-`PUBMEDQA_DATA` (SSD path) · `PUBMEDQA_LLM` (default `llama3.1:8b`) · `ALPHA` (citation
-weight) · `IMPACT_FLOOR` (cold-start) · `USE_CROSS_ENCODER` (off in v1) · `MEDCPT_REVISION`.
+`PUBMEDQA_DATA` (SSD path) · `PUBMEDQA_LLM` (default `llama3.1:8b`) · `ALPHA` (bounded
+citation/evidence weight) · `IMPACT_FLOOR` (cold-start) · `USE_CROSS_ENCODER` (off in v1) ·
+`MEDCPT_REVISION`.
 
 ## License
 [MIT](LICENSE).
