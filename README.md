@@ -62,7 +62,7 @@ python scripts/p0_ask.py --no-llm "statins and dementia"   # retrieval only, no 
 
 ### Phase 0b — verify the precomputed-download path (before full build)
 NCBI publishes MedCPT vectors for all of PubMed as 38 chunks
-(`embeds_chunk_{i}.npy` + `pmids_chunk_{i}.json`) at
+(`embeds_chunk_{i}.npy` + `pmids_chunk_{i}.json` + `pubmed_chunk_{i}.json`) at
 `ftp.ncbi.nlm.nih.gov/pub/lu/MedCPT/pubmed_embeddings/`. This script downloads one chunk
 and runs three checks:
 
@@ -81,6 +81,20 @@ Pin `MEDCPT_REVISION` in `config.py` so the full build matches what you verified
 (`pubmed_chunk_{i}.json` also holds the title/abstract text — handy to populate SQLite at
 full-build time instead of parsing baseline XML.)
 
+### Snapshot build from precomputed embeddings
+This is the production-aligned ingest path for v1:
+
+```bash
+python scripts/build_snapshot_from_precomputed.py --list
+python scripts/build_snapshot_from_precomputed.py --chunks 0 --overwrite --build-index
+python scripts/build_snapshot_from_precomputed.py --chunks 0 1 2 --fetch-citations
+```
+
+Outputs:
+- SQLite papers + FTS5 index
+- LanceDB vector table
+- `build_report.json` with integrity stats
+
 ---
 
 ## Layout
@@ -96,7 +110,7 @@ src/pubmedqa/
   generate.py      Ollama answer + [PMID] citation validation
 scripts/
   p0_download_sample.py  p0_build_index.py  p0_ask.py
-  p0b_verify_precomputed.py
+  p0b_verify_precomputed.py  build_snapshot_from_precomputed.py
 ```
 
 ## Config knobs (`src/pubmedqa/config.py`)
