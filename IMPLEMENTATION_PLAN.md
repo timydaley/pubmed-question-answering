@@ -107,7 +107,7 @@ For each question:
 5. Pass top results to the LLM
 
 ## Generation layer
-- Local Ollama model, default **8B**
+- Local MLX model on Apple Silicon, default **8B**
 - Prompt constrained to retrieved evidence only
 - Inline `[PMID]` citations required
 - Post-generation citation validation required
@@ -358,7 +358,7 @@ Exact thresholds should be filled in after Phase 0 measurements.
 | Vector store | LanceDB |
 | Dense model | MedCPT query encoder |
 | Article vectors | downloaded precomputed MedCPT embeddings |
-| LLM | Ollama, default 8B |
+| LLM | MLX local model, default 8B |
 | Interface | CLI first |
 
 ---

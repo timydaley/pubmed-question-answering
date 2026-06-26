@@ -21,9 +21,11 @@ EMBED_DIM = 768
 ART_MAXLEN = 512   # MedCPT article encoder
 QRY_MAXLEN = 64    # MedCPT query encoder
 
-# --- LLM (local Ollama, Metal) ----------------------------------------------
-OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
-LLM_MODEL = os.environ.get("PUBMEDQA_LLM", "llama3.1:8b")  # v1 = fast 8B
+# --- LLM (local MLX on Apple Silicon) ---------------------------------------
+LLM_BACKEND = os.environ.get("PUBMEDQA_LLM_BACKEND", "mlx")
+LLM_MODEL = os.environ.get("PUBMEDQA_LLM", "mlx-community/Llama-3.1-8B-Instruct-4bit")
+LLM_MAX_TOKENS = int(os.environ.get("PUBMEDQA_LLM_MAX_TOKENS", "600"))
+LLM_TEMPERATURE = float(os.environ.get("PUBMEDQA_LLM_TEMPERATURE", "0.0"))
 
 # --- Retrieval (v1 = lean: RRF-only, cross-encoder OFF) ----------------------
 RRF_K = 60
@@ -31,6 +33,21 @@ BM25_TOPK = 100
 DENSE_TOPK = 100
 USE_CROSS_ENCODER = False   # v1 lean; flip on in Phase 3 if latency allows
 TOP_N_CONTEXT = 10
+QUERY_OVERLAP_MIN = 1
+QUERY_OVERLAP_BONUS = 0.02
+KEYWORD_FILTER_ENABLED = True
+KEYWORD_FILTER_MIN_REL = 0.65
+KEYWORD_FILTER_BONUS = 0.04
+EVIDENCE_TYPE_BONUS = 0.05
+EVIDENCE_TYPE_PENALTY = 0.03
+DEDUP_TITLE_SIM = 0.92
+DEDUP_TOKEN_JACCARD = 0.80
+BALANCED_CONTEXT_CLINICAL_QUOTA = 5
+BALANCED_CONTEXT_MECH_QUOTA = 5
+CLINICAL_QUERY_EVIDENCE_MULTIPLIER = 2.0
+CLINICAL_QUERY_MECH_PENALTY = 0.06
+CLINICAL_QUERY_CLINICAL_QUOTA = 7
+CLINICAL_QUERY_MECH_QUOTA = 3
 
 # --- Citation weighting (bounded booster; tuned empirically in Phase 2) ------
 ALPHA = 0.10          # impact weight (booster, not override)

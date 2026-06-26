@@ -26,6 +26,7 @@ import sys
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Optional
 
 import numpy as np
 
@@ -115,7 +116,7 @@ def _load_text_map(path: Path):
     raise ValueError(f"Unsupported JSON structure in {path}")
 
 
-def load_chunk(n: int, rows: int | None = None):
+def load_chunk(n: int, rows: Optional[int] = None):
     embeds = np.load(NCBI_DIR / f"embeds_chunk_{n}.npy", mmap_mode="r")
     pmids = [int(p) for p in json.load(open(NCBI_DIR / f"pmids_chunk_{n}.json"))]
     text_map = _load_text_map(NCBI_DIR / f"pubmed_chunk_{n}.json")
