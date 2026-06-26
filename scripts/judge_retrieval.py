@@ -33,6 +33,18 @@ Judge whether a PubMed paper is relevant evidence for answering the user's medic
 Use only the provided title, abstract, and metadata. Do not assume facts not present.
 Return ONLY valid JSON."""
 
+EVIDENCE_TYPES = {
+    "meta-analysis",
+    "systematic_review",
+    "randomized_trial",
+    "cohort",
+    "case_control",
+    "review",
+    "mechanistic",
+    "editorial_or_news",
+    "other",
+}
+
 
 def _local_papers(pmids):
     try:
@@ -115,14 +127,52 @@ def _judge_user_prompt(question, paper):
 Paper:
 {_paper_text(paper)}
 
-Score this paper for answering the question.
+Score this paper for answering the exact question, not merely sharing keywords.
+Use this strict 0-3 rubric:
+- 3 = directly answers the exact question with human outcome evidence when the question is clinical/risk/outcome oriented. Examples: meta-analysis, systematic review, randomized trial, cohort, or case-control study of the same exposure/intervention and the same endpoint. For mechanistic questions, a 3 must directly test the named mechanism in an appropriate model.
+- 2 = relevant but indirect or limited. Examples: narrative/background review, mechanistic or animal/cell evidence for a clinical question, related but narrower endpoint/subtype/population, treatment/survival evidence when the question asks incidence/risk/prevention, or the right exposure with only a proxy outcome.
+- 1 = weak/background mention only. Examples: broad disease review, tangential mention of one query concept, editorial/news/commentary without substantive evidence, or only partial keyword overlap.
+- 0 = off topic or does not provide useful evidence for the question.
+
+Be conservative: do not give 3 for reviews without clear human outcome evidence, mechanistic studies answering clinical outcome questions, papers about a different disease endpoint, or papers about prognosis/survival when the question asks disease risk/incidence.
+Set answers_question=true only for relevance=3.
+
 Return JSON with exactly these keys:
-- relevance: integer 0-3, where 0=irrelevant, 1=weak/background only, 2=relevant but indirect/limited, 3=directly relevant evidence
+- relevance: integer 0-3
 - evidence_type: one of meta-analysis, systematic_review, randomized_trial, cohort, case_control, review, mechanistic, editorial_or_news, other
 - answers_question: boolean
 - population_or_model: short string, e.g. humans, mice, cells, mixed, unclear
-- reason: one concise sentence
+- reason: one concise sentence explaining the score
 """
+
+
+def _normalize_judgement(judged):
+    """Coerce model output to the requested schema/rubric constraints."""
+    try:
+        rel = int(judged.get("relevance"))
+    except Exception:
+        rel = None
+    if rel is not None:
+        judged["relevance"] = max(0, min(3, rel))
+        if judged["relevance"] < 3:
+            judged["answers_question"] = False
+        elif "answers_question" not in judged:
+            judged["answers_question"] = True
+    etype = str(judged.get("evidence_type") or "other").strip().lower().replace(" ", "_")
+    aliases = {
+        "meta_analysis": "meta-analysis",
+        "systematic review": "systematic_review",
+        "randomized trial": "randomized_trial",
+        "randomized_controlled_trial": "randomized_trial",
+        "case-control": "case_control",
+        "clinical_trial": "randomized_trial",
+        "journal_article": "other",
+    }
+    etype = aliases.get(etype, etype)
+    judged["evidence_type"] = etype if etype in EVIDENCE_TYPES else "other"
+    for key in ("answers_question", "population_or_model", "reason"):
+        judged.setdefault(key, False if key == "answers_question" else "")
+    return judged
 
 
 def judge_one_openai(question, paper, model, base_url, api_key, timeout=60):
@@ -144,7 +194,7 @@ def judge_one_openai(question, paper, model, base_url, api_key, timeout=60):
         detail = resp.text[:1000]
         raise RuntimeError(f"{resp.status_code} error from judge API: {detail}")
     content = resp.json()["choices"][0]["message"]["content"]
-    judged = _extract_json(content)
+    judged = _normalize_judgement(_extract_json(content))
     judged["model"] = model
     return judged
 
@@ -183,7 +233,7 @@ def judge_one_mlx(question, paper, model, max_tokens=256):
         sampler=make_sampler(temp=0.0),
         verbose=False,
     )
-    judged = _extract_json(content)
+    judged = _normalize_judgement(_extract_json(content))
     judged["model"] = model
     return judged
 

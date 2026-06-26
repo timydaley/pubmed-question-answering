@@ -1,0 +1,1325 @@
+{
+  "created_at": "2026-06-26T18:26:00Z",
+  "results": [
+    {
+      "question": "does metformin reduce cancer risk?",
+      "top_n": 10,
+      "retrieval_seconds": 13.465,
+      "generation_seconds": null,
+      "num_results": 10,
+      "unique_journals": 0,
+      "year_range": [
+        null,
+        null
+      ],
+      "context_group_counts": {
+        "clinical/review": 5,
+        "mechanistic/other": 5
+      },
+      "citation_status": null,
+      "papers": [
+        {
+          "pmid": 25806241,
+          "title": "Association of the metformin with the risk of lung cancer: a meta-analysis.",
+          "year": null,
+          "journal": "",
+          "score": 1.0326315789473683,
+          "relevance": 0.8026315789473684,
+          "overlap": 2,
+          "focus_overlap": 2,
+          "pub_boost": 0.1,
+          "citation_count": null,
+          "rcr": null,
+          "pubtypes": "",
+          "context_group": "clinical/review",
+          "judge": {
+            "relevance": 3,
+            "evidence_type": "meta-analysis",
+            "answers_question": true,
+            "population_or_model": "humans",
+            "reason": "The paper performs a meta-analysis showing that metformin use is associated with reduced risk of lung cancer, directly addressing the question about metformin's effect on cancer risk.",
+            "model": "mlx-community/Qwen3-4B-4bit"
+          }
+        },
+        {
+          "pmid": 24172091,
+          "title": "The effects of metformin on ovarian cancer: a systematic review.",
+          "year": null,
+          "journal": "",
+          "score": 0.9793023255813953,
+          "relevance": 0.7093023255813953,
+          "overlap": 2,
+          "focus_overlap": 2,
+          "pub_boost": 0.14,
+          "citation_count": null,
+          "rcr": null,
+          "pubtypes": "",
+          "context_group": "clinical/review",
+          "judge": {
+            "relevance": 2,
+            "evidence_type": "systematic_review",
+            "answers_question": false,
+            "population_or_model": "humans",
+            "reason": "The paper provides a systematic review of metformin's effects on ovarian cancer, with evidence on survival outcomes and prevention, though the question is about cancer risk reduction.",
+            "model": "mlx-community/Qwen3-4B-4bit"
+          }
+        },
+        {
+          "pmid": 23753040,
+          "title": "A cohort study of metformin exposure and survival in patients with stage I-III colorectal cancer.",
+          "year": null,
+          "journal": "",
+          "score": 0.9724999999999999,
+          "relevance": 0.7625,
+          "overlap": 2,
+          "focus_overlap": 2,
+          "pub_boost": 0.08000000000000002,
+          "citation_count": null,
+          "rcr": null,
+          "pubtypes": "",
+          "context_group": "clinical/review",
+          "judge": {
+            "relevance": 2,
+            "evidence_type": "cohort",
+            "answers_question": false,
+            "population_or_model": "humans",
+            "reason": "The study examines metformin exposure and colorectal cancer-specific survival in humans, providing survival evidence related to metformin use, though the question asks about cancer risk reduction.",
+            "model": "mlx-community/Qwen3-4B-4bit"
+          }
+        },
+        {
+          "pmid": 26446233,
+          "title": "Metformin Use Is Associated With Better Survival of Breast Cancer Patients With Diabetes: A Meta-Analysis.",
+          "year": null,
+          "journal": "",
+          "score": 0.8339603960396039,
+          "relevance": 0.6039603960396039,
+          "overlap": 2,
+          "focus_overlap": 2,
+          "pub_boost": 0.1,
+          "citation_count": null,
+          "rcr": null,
+          "pubtypes": "",
+          "context_group": "clinical/review",
+          "judge": {
+            "relevance": 2,
+            "evidence_type": "meta-analysis",
+            "answers_question": false,
+            "population_or_model": "humans",
+            "reason": "The paper shows metformin is associated with better survival in diabetic breast cancer patients, but the question asks about reducing cancer risk (incidence/prevention), not survival/prognosis.",
+            "model": "mlx-community/Qwen3-4B-4bit"
+          }
+        },
+        {
+          "pmid": 32592092,
+          "title": "Metformin and colorectal cancer: a systematic review, meta-analysis and meta-regression.",
+          "year": null,
+          "journal": "",
+          "score": 0.7185294117647059,
+          "relevance": 0.44852941176470584,
+          "overlap": 2,
+          "focus_overlap": 2,
+          "pub_boost": 0.14,
+          "citation_count": null,
+          "rcr": null,
+          "pubtypes": "",
+          "context_group": "clinical/review",
+          "judge": {
+            "relevance": 3,
+            "evidence_type": "meta-analysis",
+            "answers_question": true,
+            "population_or_model": "humans",
+            "reason": "The paper provides a meta-analysis showing that metformin use is associated with reduced incidence of colorectal cancer and improved survival outcomes in humans.",
+            "model": "mlx-community/Qwen3-4B-4bit"
+          }
+        },
+        {
+          "pmid": 35693999,
+          "title": "Combined treatment with glucagon-like peptide-1 receptor agonist exendin-4 and metformin attenuates breast cancer growth.",
+          "year": null,
+          "journal": "",
+          "score": 1.0982539682539683,
+          "relevance": 0.9682539682539681,
+          "overlap": 2,
+          "focus_overlap": 2,
+          "pub_boost": 0.0,
+          "citation_count": null,
+          "rcr": null,
+          "pubtypes": "",
+          "context_group": "mechanistic/other",
+          "judge": {
+            "relevance": 2,
+            "evidence_type": "mechanistic",
+            "answers_question": false,
+            "population_or_model": "cells",
+            "reason": "The paper demonstrates the anti-cancer effects of metformin in breast cancer cell lines, providing mechanistic evidence supporting its potential role in cancer prevention, though the evidence is from in vitro studies.",
+            "model": "mlx-community/Qwen3-4B-4bit"
+          }
+        },
+        {
+          "pmid": 23687346,
+          "title": "Metformin decreases glucose oxidation and increases the dependency of prostate cancer cells on reductive glutamine metabolism.",
+          "year": null,
+          "journal": "",
+          "score": 1.07,
+          "relevance": 1.0,
+          "overlap": 2,
+          "focus_overlap": 2,
+          "pub_boost": -0.06,
+          "citation_count": null,
+          "rcr": null,
+          "pubtypes": "",
+          "context_group": "mechanistic/other",
+          "judge": {
+            "relevance": 2,
+            "evidence_type": "mechanistic",
+            "answers_question": false,
+            "population_or_model": "mice",
+            "reason": "The paper describes a mechanistic study in prostate cancer cells and a mouse model, showing how metformin affects cancer cell metabolism, but does not directly address the question of whether metformin reduces cancer risk in humans.",
+            "model": "mlx-community/Qwen3-4B-4bit"
+          }
+        },
+        {
+          "pmid": 26359363,
+          "title": "Metformin represses cancer cells via alternate pathways in N-cadherin expressing vs. N-cadherin deficient cells.",
+          "year": null,
+          "journal": "",
+          "score": 1.0538709677419353,
+          "relevance": 0.9838709677419354,
+          "overlap": 2,
+          "focus_overlap": 2,
+          "pub_boost": -0.06,
+          "citation_count": null,
+          "rcr": null,
+          "pubtypes": "",
+          "context_group": "mechanistic/other",
+          "judge": {
+            "relevance": 2,
+            "evidence_type": "mechanistic",
+            "answers_question": false,
+            "population_or_model": "humans",
+            "reason": "The paper describes mechanistic effects of metformin on cancer cells and its potential predictive value for post-surgical recurrence in prostate cancer, but does not directly address the overall risk reduction of cancer incidence.",
+            "model": "mlx-community/Qwen3-4B-4bit"
+          }
+        },
+        {
+          "pmid": 23499688,
+          "title": "Metformin and cancer.",
+          "year": null,
+          "journal": "",
+          "score": 1.04044776119403,
+          "relevance": 0.9104477611940298,
+          "overlap": 2,
+          "focus_overlap": 2,
+          "pub_boost": 0.0,
+          "citation_count": null,
+          "rcr": null,
+          "pubtypes": "",
+          "context_group": "mechanistic/other",
+          "judge": {
+            "relevance": 2,
+            "evidence_type": "review",
+            "answers_question": false,
+            "population_or_model": "humans",
+            "reason": "The paper reviews existing evidence linking metformin to reduced cancer risk in humans, but does not provide direct clinical trial data or clear human outcome evidence for the exact question.",
+            "model": "mlx-community/Qwen3-4B-4bit"
+          }
+        },
+        {
+          "pmid": 25329671,
+          "title": "Anti-diabetic drug metformin: challenges and perspectives for cancer therapy.",
+          "year": null,
+          "journal": "",
+          "score": 1.0270588235294118,
+          "relevance": 0.8970588235294117,
+          "overlap": 2,
+          "focus_overlap": 2,
+          "pub_boost": 0.0,
+          "citation_count": null,
+          "rcr": null,
+          "pubtypes": "",
+          "context_group": "mechanistic/other",
+          "judge": {
+            "relevance": 2,
+            "evidence_type": "review",
+            "answers_question": false,
+            "population_or_model": "humans",
+            "reason": "The paper discusses metformin's potential anticancer effects based on retrospective studies showing a reduction in cancer risk, which is relevant to the question about metformin's role in reducing cancer risk.",
+            "model": "mlx-community/Qwen3-4B-4bit"
+          }
+        }
+      ],
+      "answer": null,
+      "manual_review": {
+        "retrieval_relevance_1_to_5": null,
+        "output_diversity_1_to_5": null,
+        "notes": ""
+      },
+      "judge_summary": {
+        "model": "mlx-community/Qwen3-4B-4bit",
+        "mean_relevance": 2.2,
+        "relevance_at_3plus": 2,
+        "relevance_at_2plus": 10,
+        "irrelevant_count": 0,
+        "judged_count": 10
+      }
+    },
+    {
+      "question": "statins and risk of dementia",
+      "top_n": 10,
+      "retrieval_seconds": 6.611,
+      "generation_seconds": null,
+      "num_results": 10,
+      "unique_journals": 0,
+      "year_range": [
+        null,
+        null
+      ],
+      "context_group_counts": {
+        "clinical/review": 7,
+        "mechanistic/other": 3
+      },
+      "citation_status": null,
+      "papers": [
+        {
+          "pmid": 30087076,
+          "title": "Statin Use and the Risk of Dementia in Patients with Stroke: A Nationwide Population-Based Cohort Study.",
+          "year": null,
+          "journal": "",
+          "score": 1.2100000000000002,
+          "relevance": 1.0,
+          "overlap": 2,
+          "focus_overlap": 2,
+          "pub_boost": 0.08000000000000002,
+          "citation_count": null,
+          "rcr": null,
+          "pubtypes": "",
+          "context_group": "clinical/review",
+          "judge": {
+            "relevance": 3,
+            "evidence_type": "cohort",
+            "answers_question": true,
+            "population_or_model": "humans",
+            "reason": "The study directly examines the association between statin use and dementia risk in patients with stroke, providing human outcome evidence.",
+            "model": "mlx-community/Qwen3-4B-4bit"
+          }
+        },
+        {
+          "pmid": 20100290,
+          "title": "Systematic review of statins for the prevention of vascular dementia or dementia.",
+          "year": null,
+          "journal": "",
+          "score": 1.18044776119403,
+          "relevance": 0.9104477611940298,
+          "overlap": 2,
+          "focus_overlap": 2,
+          "pub_boost": 0.14,
+          "citation_count": null,
+          "rcr": null,
+          "pubtypes": "",
+          "context_group": "clinical/review",
+          "judge": {
+            "relevance": 3,
+            "evidence_type": "systematic_review",
+            "answers_question": true,
+            "population_or_model": "humans",
+            "reason": "The paper provides a systematic review of statins' effect on vascular dementia and dementia, directly addressing the question about statins and dementia risk.",
+            "model": "mlx-community/Qwen3-4B-4bit"
+          }
+        },
+        {
+          "pmid": 18695588,
+          "title": "Use of statins and risk of hospitalization with dementia: a Danish population-based case-control study.",
+          "year": null,
+          "journal": "",
+          "score": 1.1342424242424243,
+          "relevance": 0.9242424242424242,
+          "overlap": 2,
+          "focus_overlap": 2,
+          "pub_boost": 0.08000000000000002,
+          "citation_count": null,
+          "rcr": null,
+          "pubtypes": "",
+          "context_group": "clinical/review",
+          "judge": {
+            "relevance": 3,
+            "evidence_type": "case_control",
+            "answers_question": true,
+            "population_or_model": "humans",
+            "reason": "The study directly assesses the risk of hospitalization with dementia associated with statin use in a population-based case-control study, directly answering the question about statin use and dementia risk.",
+            "model": "mlx-community/Qwen3-4B-4bit"
+          }
+        },
+        {
+          "pmid": 34756134,
+          "title": "An evidence-based review of neuronal cholesterol role in dementia and statins as a pharmacotherapy in reducing risk of dementia.",
+          "year": null,
+          "journal": "",
+          "score": 1.0670588235294118,
+          "relevance": 0.8970588235294117,
+          "overlap": 2,
+          "focus_overlap": 2,
+          "pub_boost": 0.04000000000000001,
+          "citation_count": null,
+          "rcr": null,
+          "pubtypes": "",
+          "context_group": "clinical/review",
+          "judge": {
+            "relevance": 2,
+            "evidence_type": "review",
+            "answers_question": false,
+            "population_or_model": "humans",
+            "reason": "The paper provides a review of statin use in dementia, discussing evidence for and against statin therapy in the context of dementia risk, but as a review rather than a direct study of human outcomes.",
+            "model": "mlx-community/Qwen3-4B-4bit"
+          }
+        },
+        {
+          "pmid": 26080283,
+          "title": "Statins and the risk of dementia in patients with atrial fibrillation: A nationwide population-based cohort study.",
+          "year": null,
+          "journal": "",
+          "score": 1.0456164383561644,
+          "relevance": 0.8356164383561643,
+          "overlap": 2,
+          "focus_overlap": 2,
+          "pub_boost": 0.08000000000000002,
+          "citation_count": null,
+          "rcr": null,
+          "pubtypes": "",
+          "context_group": "clinical/review",
+          "judge": {
+            "relevance": 3,
+            "evidence_type": "cohort",
+            "answers_question": true,
+            "population_or_model": "humans",
+            "reason": "The study directly examines the association between statin use and the risk of non-vascular dementia in patients with atrial fibrillation, providing human outcome evidence for the question.",
+            "model": "mlx-community/Qwen3-4B-4bit"
+          }
+        },
+        {
+          "pmid": 18663180,
+          "title": "Use of statins and incidence of dementia and cognitive impairment without dementia in a cohort study.",
+          "year": null,
+          "journal": "",
+          "score": 1.0233333333333334,
+          "relevance": 0.8133333333333334,
+          "overlap": 2,
+          "focus_overlap": 2,
+          "pub_boost": 0.08000000000000002,
+          "citation_count": null,
+          "rcr": null,
+          "pubtypes": "",
+          "context_group": "clinical/review",
+          "judge": {
+            "relevance": 3,
+            "evidence_type": "cohort",
+            "answers_question": true,
+            "population_or_model": "humans",
+            "reason": "The study directly examines the association between statin use and incidence of dementia and cognitive impairment without dementia in a cohort of older Mexican Americans, providing human outcome evidence for the question.",
+            "model": "mlx-community/Qwen3-4B-4bit"
+          }
+        },
+        {
+          "pmid": 24681022,
+          "title": "Statin use and incident dementia: a nationwide cohort study of Taiwan.",
+          "year": null,
+          "journal": "",
+          "score": 1.0126315789473683,
+          "relevance": 0.8026315789473684,
+          "overlap": 2,
+          "focus_overlap": 2,
+          "pub_boost": 0.08000000000000002,
+          "citation_count": null,
+          "rcr": null,
+          "pubtypes": "",
+          "context_group": "clinical/review",
+          "judge": {
+            "relevance": 3,
+            "evidence_type": "cohort",
+            "answers_question": true,
+            "population_or_model": "humans",
+            "reason": "The study directly examines the association between statin use and incident dementia in a large cohort of elderly patients, providing human outcome evidence for the question.",
+            "model": "mlx-community/Qwen3-4B-4bit"
+          }
+        },
+        {
+          "pmid": 32583471,
+          "title": "Statin exposure and the risk of dementia in individuals with hypercholesterolaemia.",
+          "year": null,
+          "journal": "",
+          "score": 1.1138709677419354,
+          "relevance": 0.9838709677419354,
+          "overlap": 2,
+          "focus_overlap": 2,
+          "pub_boost": 0.0,
+          "citation_count": null,
+          "rcr": null,
+          "pubtypes": "",
+          "context_group": "mechanistic/other",
+          "judge": {
+            "relevance": 3,
+            "evidence_type": "cohort",
+            "answers_question": true,
+            "population_or_model": "humans",
+            "reason": "The study directly examines the association between statin exposure and dementia risk in humans, providing hazard ratios for dementia outcomes.",
+            "model": "mlx-community/Qwen3-4B-4bit"
+          }
+        },
+        {
+          "pmid": 15699299,
+          "title": "Do statins reduce risk of incident dementia and Alzheimer disease? The Cache County Study.",
+          "year": null,
+          "journal": "",
+          "score": 1.0684615384615386,
+          "relevance": 0.9384615384615385,
+          "overlap": 2,
+          "focus_overlap": 2,
+          "pub_boost": 0.0,
+          "citation_count": null,
+          "rcr": null,
+          "pubtypes": "",
+          "context_group": "mechanistic/other",
+          "judge": {
+            "relevance": 2,
+            "evidence_type": "cohort",
+            "answers_question": false,
+            "population_or_model": "humans",
+            "reason": "The study directly examines the association between statin use and dementia incidence in a cohort of elderly individuals, providing relevant evidence for the question about statin use and dementia risk.",
+            "model": "mlx-community/Qwen3-4B-4bit"
+          }
+        },
+        {
+          "pmid": 37291702,
+          "title": "Statin therapy reduces dementia risk in atrial fibrillation patients receiving oral anticoagulants.",
+          "year": null,
+          "journal": "",
+          "score": 1.0382539682539682,
+          "relevance": 0.9682539682539681,
+          "overlap": 1,
+          "focus_overlap": 1,
+          "pub_boost": 0.0,
+          "citation_count": null,
+          "rcr": null,
+          "pubtypes": "",
+          "context_group": "mechanistic/other",
+          "judge": {
+            "relevance": 3,
+            "evidence_type": "cohort",
+            "answers_question": true,
+            "population_or_model": "humans",
+            "reason": "The study directly examines the effect of statin therapy on dementia risk in atrial fibrillation patients receiving oral anticoagulants, providing human outcome evidence for the question.",
+            "model": "mlx-community/Qwen3-4B-4bit"
+          }
+        }
+      ],
+      "answer": null,
+      "manual_review": {
+        "retrieval_relevance_1_to_5": null,
+        "output_diversity_1_to_5": null,
+        "notes": ""
+      },
+      "judge_summary": {
+        "model": "mlx-community/Qwen3-4B-4bit",
+        "mean_relevance": 2.8,
+        "relevance_at_3plus": 8,
+        "relevance_at_2plus": 10,
+        "irrelevant_count": 0,
+        "judged_count": 10
+      }
+    },
+    {
+      "question": "vitamin D supplementation and respiratory infections",
+      "top_n": 10,
+      "retrieval_seconds": 12.561,
+      "generation_seconds": null,
+      "num_results": 10,
+      "unique_journals": 0,
+      "year_range": [
+        null,
+        null
+      ],
+      "context_group_counts": {
+        "clinical/review": 7,
+        "mechanistic/other": 3
+      },
+      "citation_status": null,
+      "papers": [
+        {
+          "pmid": 23220552,
+          "title": "Vitamin D in the prevention of acute respiratory infection: systematic review of clinical studies.",
+          "year": null,
+          "journal": "",
+          "score": 1.0544704246230963,
+          "relevance": 0.8444704246230963,
+          "overlap": 4,
+          "focus_overlap": 1,
+          "pub_boost": 0.08000000000000002,
+          "citation_count": null,
+          "rcr": null,
+          "pubtypes": "",
+          "context_group": "clinical/review",
+          "judge": {
+            "relevance": 3,
+            "evidence_type": "systematic_review",
+            "answers_question": true,
+            "population_or_model": "humans",
+            "reason": "The paper provides a systematic review of clinical studies on vitamin D supplementation and respiratory infections, directly addressing the question with human outcome evidence.",
+            "model": "mlx-community/Qwen3-4B-4bit"
+          }
+        },
+        {
+          "pmid": 30328294,
+          "title": "Effect of Vitamin D supplementation to reduce respiratory infections in children and adolescents in Vietnam: A randomized controlled trial.",
+          "year": null,
+          "journal": "",
+          "score": 0.9063914414505096,
+          "relevance": 0.7163914414505097,
+          "overlap": 4,
+          "focus_overlap": 2,
+          "pub_boost": 0.020000000000000018,
+          "citation_count": null,
+          "rcr": null,
+          "pubtypes": "",
+          "context_group": "clinical/review",
+          "judge": {
+            "relevance": 3,
+            "evidence_type": "randomized_trial",
+            "answers_question": true,
+            "population_or_model": "humans",
+            "reason": "The study directly examines the effect of vitamin D supplementation on respiratory infections in children and adolescents, providing human outcome evidence for the question.",
+            "model": "mlx-community/Qwen3-4B-4bit"
+          }
+        },
+        {
+          "pmid": 25476069,
+          "title": "Vitamin D3 supplementation in patients with chronic obstructive pulmonary disease (ViDiCO): a multicentre, double-blind, randomised controlled trial.",
+          "year": null,
+          "journal": "",
+          "score": 0.8145533042855029,
+          "relevance": 0.5645533042855029,
+          "overlap": 4,
+          "focus_overlap": 2,
+          "pub_boost": 0.08000000000000002,
+          "citation_count": null,
+          "rcr": null,
+          "pubtypes": "",
+          "context_group": "clinical/review",
+          "judge": {
+            "relevance": 2,
+            "evidence_type": "randomized_trial",
+            "answers_question": false,
+            "population_or_model": "humans",
+            "reason": "The study directly investigates the effect of vitamin D3 supplementation on respiratory infections (upper respiratory infection) in patients with COPD, providing relevant evidence for the question.",
+            "model": "mlx-community/Qwen3-4B-4bit"
+          }
+        },
+        {
+          "pmid": 34537990,
+          "title": "Vitamin D, respiratory infections, and chronic disease: Review of meta-analyses and randomized clinical trials.",
+          "year": null,
+          "journal": "",
+          "score": 0.8104692749133061,
+          "relevance": 0.5804692749133061,
+          "overlap": 4,
+          "focus_overlap": 2,
+          "pub_boost": 0.060000000000000026,
+          "citation_count": null,
+          "rcr": null,
+          "pubtypes": "",
+          "context_group": "clinical/review",
+          "judge": {
+            "relevance": 3,
+            "evidence_type": "meta-analysis",
+            "answers_question": true,
+            "population_or_model": "humans",
+            "reason": "The paper directly addresses the question about vitamin D supplementation and respiratory infections, providing meta-analyses of RCTs that show suggestive evidence for benefit in specific populations and outcomes.",
+            "model": "mlx-community/Qwen3-4B-4bit"
+          }
+        },
+        {
+          "pmid": 36259029,
+          "title": "Role of Vitamin D Deficiency in Increased Susceptibility to Respiratory Infections Among Children: A Systematic Review.",
+          "year": null,
+          "journal": "",
+          "score": 0.7483569611050527,
+          "relevance": 0.5183569611050527,
+          "overlap": 3,
+          "focus_overlap": 2,
+          "pub_boost": 0.08000000000000002,
+          "citation_count": null,
+          "rcr": null,
+          "pubtypes": "",
+          "context_group": "clinical/review",
+          "judge": {
+            "relevance": 3,
+            "evidence_type": "systematic_review",
+            "answers_question": true,
+            "population_or_model": "humans",
+            "reason": "The paper provides a systematic review of vitamin D deficiency's role in respiratory infections among children, directly addressing the question about vitamin D supplementation and respiratory infections.",
+            "model": "mlx-community/Qwen3-4B-4bit"
+          }
+        },
+        {
+          "pmid": 23326099,
+          "title": "Vitamin D for prevention of respiratory tract infections: A systematic review and meta-analysis.",
+          "year": null,
+          "journal": "",
+          "score": 0.6573282442748092,
+          "relevance": 0.44732824427480916,
+          "overlap": 4,
+          "focus_overlap": 1,
+          "pub_boost": 0.08000000000000002,
+          "citation_count": null,
+          "rcr": null,
+          "pubtypes": "",
+          "context_group": "clinical/review",
+          "judge": {
+            "relevance": 3,
+            "evidence_type": "systematic_review",
+            "answers_question": true,
+            "population_or_model": "humans",
+            "reason": "The paper provides a systematic review and meta-analysis of clinical trials on vitamin D supplementation and respiratory tract infections, directly addressing the question with human outcome evidence.",
+            "model": "mlx-community/Qwen3-4B-4bit"
+          }
+        },
+        {
+          "pmid": 33294117,
+          "title": "Prenatal vitamin D supplementation and child respiratory health: A systematic review and meta-analysis of randomized controlled trials.",
+          "year": null,
+          "journal": "",
+          "score": 0.6553619373519347,
+          "relevance": 0.3753619373519347,
+          "overlap": 4,
+          "focus_overlap": 1,
+          "pub_boost": 0.15,
+          "citation_count": null,
+          "rcr": null,
+          "pubtypes": "",
+          "context_group": "clinical/review",
+          "judge": {
+            "relevance": 2,
+            "evidence_type": "meta-analysis",
+            "answers_question": false,
+            "population_or_model": "humans",
+            "reason": "The paper conducts a meta-analysis of randomized controlled trials examining the effect of prenatal vitamin D supplementation on childhood respiratory outcomes, directly addressing the question about vitamin D and respiratory infections, though the evidence is not statistically significant.",
+            "model": "mlx-community/Qwen3-4B-4bit"
+          }
+        },
+        {
+          "pmid": 28361631,
+          "title": "Vitamin D supplementation effective in preventing acute respiratory tract infections.",
+          "year": null,
+          "journal": "",
+          "score": 1.100500112258644,
+          "relevance": 0.9905001122586439,
+          "overlap": 4,
+          "focus_overlap": 2,
+          "pub_boost": -0.06,
+          "citation_count": null,
+          "rcr": null,
+          "pubtypes": "",
+          "context_group": "mechanistic/other",
+          "judge": {
+            "relevance": 2,
+            "evidence_type": "review",
+            "answers_question": false,
+            "population_or_model": "humans",
+            "reason": "The paper discusses the association between vitamin D levels and respiratory infections but does not provide direct evidence on the effectiveness of vitamin D supplementation in preventing acute respiratory infections.",
+            "model": "mlx-community/Qwen3-4B-4bit"
+          }
+        },
+        {
+          "pmid": 28247776,
+          "title": "Vitamin D can help stave off respiratory tract infections.",
+          "year": null,
+          "journal": "",
+          "score": 1.0485994397759102,
+          "relevance": 0.9985994397759103,
+          "overlap": 3,
+          "focus_overlap": 1,
+          "pub_boost": -0.06,
+          "citation_count": null,
+          "rcr": null,
+          "pubtypes": "",
+          "context_group": "mechanistic/other",
+          "judge": {
+            "relevance": 2,
+            "evidence_type": "other",
+            "answers_question": false,
+            "population_or_model": "humans",
+            "reason": "The paper directly addresses the effect of vitamin D supplementation on preventing respiratory tract infections, which is a relevant endpoint to the question about vitamin D and respiratory infections, but it is a single study rather than a systematic review or randomized trial.",
+            "model": "mlx-community/Qwen3-4B-4bit"
+          }
+        },
+        {
+          "pmid": 27714929,
+          "title": "Vitamin D modulation of innate immune responses to respiratory viral infections.",
+          "year": null,
+          "journal": "",
+          "score": 0.9822352710902327,
+          "relevance": 0.8722352710902328,
+          "overlap": 4,
+          "focus_overlap": 2,
+          "pub_boost": -0.06,
+          "citation_count": null,
+          "rcr": null,
+          "pubtypes": "",
+          "context_group": "mechanistic/other",
+          "judge": {
+            "relevance": 2,
+            "evidence_type": "review",
+            "answers_question": false,
+            "population_or_model": "humans",
+            "reason": "The paper reviews the role of vitamin D in respiratory infections and discusses its potential as a supplement, providing evidence on its modulation of innate immune responses in humans.",
+            "model": "mlx-community/Qwen3-4B-4bit"
+          }
+        }
+      ],
+      "answer": null,
+      "manual_review": {
+        "retrieval_relevance_1_to_5": null,
+        "output_diversity_1_to_5": null,
+        "notes": ""
+      },
+      "judge_summary": {
+        "model": "mlx-community/Qwen3-4B-4bit",
+        "mean_relevance": 2.5,
+        "relevance_at_3plus": 5,
+        "relevance_at_2plus": 10,
+        "irrelevant_count": 0,
+        "judged_count": 10
+      }
+    },
+    {
+      "question": "aspirin for primary prevention cardiovascular disease",
+      "top_n": 10,
+      "retrieval_seconds": 19.681,
+      "generation_seconds": null,
+      "num_results": 10,
+      "unique_journals": 0,
+      "year_range": [
+        null,
+        null
+      ],
+      "context_group_counts": {
+        "clinical/review": 6,
+        "mechanistic/other": 4
+      },
+      "citation_status": null,
+      "papers": [
+        {
+          "pmid": 16110127,
+          "title": "Aspirin for the primary prevention of cardiovascular disease: a comprehensive review.",
+          "year": null,
+          "journal": "",
+          "score": 1.1361399647887325,
+          "relevance": 0.9061399647887324,
+          "overlap": 5,
+          "focus_overlap": 2,
+          "pub_boost": 0.04000000000000001,
+          "citation_count": null,
+          "rcr": null,
+          "pubtypes": "",
+          "context_group": "clinical/review",
+          "judge": {
+            "relevance": 2,
+            "evidence_type": "review",
+            "answers_question": false,
+            "population_or_model": "humans",
+            "reason": "The paper provides a review of aspirin use for primary prevention of cardiovascular disease, focusing on risk assessment and benefit-risk balance in humans, which is relevant but indirect evidence for the clinical question.",
+            "model": "mlx-community/Qwen3-4B-4bit"
+          }
+        },
+        {
+          "pmid": 20429671,
+          "title": "Role of aspirin in the primary prevention of cardiovascular disease in diabetes mellitus: a meta-analysis.",
+          "year": null,
+          "journal": "",
+          "score": 0.9318627239369738,
+          "relevance": 0.6418627239369739,
+          "overlap": 5,
+          "focus_overlap": 2,
+          "pub_boost": 0.1,
+          "citation_count": null,
+          "rcr": null,
+          "pubtypes": "",
+          "context_group": "clinical/review",
+          "judge": {
+            "relevance": 3,
+            "evidence_type": "meta-analysis",
+            "answers_question": true,
+            "population_or_model": "humans",
+            "reason": "The paper directly addresses the use of aspirin in primary prevention of cardiovascular disease in diabetes patients, providing a meta-analysis of randomized trials with human outcomes.",
+            "model": "mlx-community/Qwen3-4B-4bit"
+          }
+        },
+        {
+          "pmid": 29923131,
+          "title": "Targeting Cardiovascular Disease in Patients with Chronic Kidney Disease: Is Primary Prevention with Aspirin Ready for Prime Time? : Editorial to: \"Aspirin for Primary Prevention of Cardiovascular Disease and Renal Disease Progression in Chronic Kidney Disease Patients: A Multicenter Randomized Clinical Trial (AASER Study)\" by M. Goicoechea et al.",
+          "year": null,
+          "journal": "",
+          "score": 0.9026872708224201,
+          "relevance": 0.6326872708224202,
+          "overlap": 5,
+          "focus_overlap": 2,
+          "pub_boost": 0.08000000000000002,
+          "citation_count": null,
+          "rcr": null,
+          "pubtypes": "",
+          "context_group": "clinical/review",
+          "judge": {
+            "relevance": 2,
+            "evidence_type": "editorial_or_news",
+            "answers_question": false,
+            "population_or_model": "humans",
+            "reason": "The paper is an editorial discussing the use of aspirin for primary prevention of cardiovascular disease in chronic kidney disease patients, but it does not provide direct human outcome evidence for the general question about aspirin for primary prevention of cardiovascular disease.",
+            "model": "mlx-community/Qwen3-4B-4bit"
+          }
+        },
+        {
+          "pmid": 35471507,
+          "title": "Aspirin Use to Prevent Cardiovascular Disease and Colorectal Cancer: Updated Evidence Report and Systematic Review for the US Preventive Services Task Force.",
+          "year": null,
+          "journal": "",
+          "score": 0.8224479166666665,
+          "relevance": 0.4924479166666666,
+          "overlap": 5,
+          "focus_overlap": 2,
+          "pub_boost": 0.14,
+          "citation_count": null,
+          "rcr": null,
+          "pubtypes": "",
+          "context_group": "clinical/review",
+          "judge": {
+            "relevance": 3,
+            "evidence_type": "systematic_review",
+            "answers_question": true,
+            "population_or_model": "humans",
+            "reason": "The paper provides a systematic review of low-dose aspirin use for primary cardiovascular disease prevention, directly addressing the question with human outcome evidence.",
+            "model": "mlx-community/Qwen3-4B-4bit"
+          }
+        },
+        {
+          "pmid": 32924644,
+          "title": "Aspirin for primary prevention of cardiovascular disease: a review of recent literature and updated guideline recommendations.",
+          "year": null,
+          "journal": "",
+          "score": 0.7570088211708098,
+          "relevance": 0.5870088211708099,
+          "overlap": 5,
+          "focus_overlap": 2,
+          "pub_boost": -0.01999999999999999,
+          "citation_count": null,
+          "rcr": null,
+          "pubtypes": "",
+          "context_group": "clinical/review",
+          "judge": {
+            "relevance": 3,
+            "evidence_type": "review",
+            "answers_question": true,
+            "population_or_model": "humans",
+            "reason": "The paper directly addresses the use of aspirin for primary prevention of cardiovascular disease, providing updated guideline recommendations and discussing recent clinical trial evidence.",
+            "model": "mlx-community/Qwen3-4B-4bit"
+          }
+        },
+        {
+          "pmid": 27341534,
+          "title": "Aspirin and cardiovascular primary prevention in non-endstage chronic kidney disease: A meta-analysis.",
+          "year": null,
+          "journal": "",
+          "score": 0.7503839143312827,
+          "relevance": 0.46038391433128273,
+          "overlap": 5,
+          "focus_overlap": 2,
+          "pub_boost": 0.1,
+          "citation_count": null,
+          "rcr": null,
+          "pubtypes": "",
+          "context_group": "clinical/review",
+          "judge": {
+            "relevance": 3,
+            "evidence_type": "meta-analysis",
+            "answers_question": true,
+            "population_or_model": "humans",
+            "reason": "The paper directly addresses the use of aspirin for primary prevention of cardiovascular disease in a specific population (non-endstage chronic kidney disease) and provides a meta-analysis with human outcome evidence (major cardiovascular events, mortality, bleeding).",
+            "model": "mlx-community/Qwen3-4B-4bit"
+          }
+        },
+        {
+          "pmid": 31226053,
+          "title": "The rise and fall of aspirin in the primary prevention of cardiovascular disease.",
+          "year": null,
+          "journal": "",
+          "score": 1.1900000000000002,
+          "relevance": 1.0,
+          "overlap": 5,
+          "focus_overlap": 2,
+          "pub_boost": 0.0,
+          "citation_count": null,
+          "rcr": null,
+          "pubtypes": "",
+          "context_group": "mechanistic/other",
+          "judge": {
+            "relevance": 3,
+            "evidence_type": "review",
+            "answers_question": true,
+            "population_or_model": "humans",
+            "reason": "The paper directly addresses the role of aspirin in primary prevention of cardiovascular disease, summarizing key trials and guidelines with human outcome evidence.",
+            "model": "mlx-community/Qwen3-4B-4bit"
+          }
+        },
+        {
+          "pmid": 32142233,
+          "title": "Aspirin in Primary and Secondary Prevention of Cardiovascular Disease.",
+          "year": null,
+          "journal": "",
+          "score": 1.1738709677419354,
+          "relevance": 0.9838709677419354,
+          "overlap": 5,
+          "focus_overlap": 2,
+          "pub_boost": 0.0,
+          "citation_count": null,
+          "rcr": null,
+          "pubtypes": "",
+          "context_group": "mechanistic/other",
+          "judge": {
+            "relevance": 3,
+            "evidence_type": "randomized_trial",
+            "answers_question": true,
+            "population_or_model": "humans",
+            "reason": "The paper directly addresses the use of aspirin for primary prevention of cardiovascular disease, citing three randomized controlled trials (ARRIVE, ASCEND, ASPREE) that evaluated the benefit and risk of aspirin in this population.",
+            "model": "mlx-community/Qwen3-4B-4bit"
+          }
+        },
+        {
+          "pmid": 16597054,
+          "title": "[The role of aspirin in the primary prevention of cardiovascular disease].",
+          "year": null,
+          "journal": "",
+          "score": 1.0937532923617208,
+          "relevance": 0.9037532923617206,
+          "overlap": 5,
+          "focus_overlap": 2,
+          "pub_boost": 0.0,
+          "citation_count": null,
+          "rcr": null,
+          "pubtypes": "",
+          "context_group": "mechanistic/other",
+          "judge": {
+            "relevance": 3,
+            "evidence_type": "review",
+            "answers_question": true,
+            "population_or_model": "humans",
+            "reason": "The paper directly addresses the use of aspirin in primary prevention of cardiovascular disease, providing clinical guidelines based on recent randomized controlled trials and risk thresholds.",
+            "model": "mlx-community/Qwen3-4B-4bit"
+          }
+        },
+        {
+          "pmid": 31590909,
+          "title": "Usefulness of Aspirin for Primary Prevention of Atherosclerotic Cardiovascular Disease.",
+          "year": null,
+          "journal": "",
+          "score": 1.065152625152625,
+          "relevance": 0.875152625152625,
+          "overlap": 5,
+          "focus_overlap": 2,
+          "pub_boost": 0.0,
+          "citation_count": null,
+          "rcr": null,
+          "pubtypes": "",
+          "context_group": "mechanistic/other",
+          "judge": {
+            "relevance": 3,
+            "evidence_type": "review",
+            "answers_question": true,
+            "population_or_model": "humans",
+            "reason": "The paper directly addresses the use of aspirin for primary prevention of atherosclerotic cardiovascular disease, reviewing the evolving evidence and discussing the balance between risks and benefits in human populations.",
+            "model": "mlx-community/Qwen3-4B-4bit"
+          }
+        }
+      ],
+      "answer": null,
+      "manual_review": {
+        "retrieval_relevance_1_to_5": null,
+        "output_diversity_1_to_5": null,
+        "notes": ""
+      },
+      "judge_summary": {
+        "model": "mlx-community/Qwen3-4B-4bit",
+        "mean_relevance": 2.8,
+        "relevance_at_3plus": 8,
+        "relevance_at_2plus": 10,
+        "irrelevant_count": 0,
+        "judged_count": 10
+      }
+    },
+    {
+      "question": "GLP-1 agonists and cardiovascular outcomes",
+      "top_n": 10,
+      "retrieval_seconds": 14.263,
+      "generation_seconds": null,
+      "num_results": 10,
+      "unique_journals": 0,
+      "year_range": [
+        null,
+        null
+      ],
+      "context_group_counts": {
+        "clinical/review": 7,
+        "mechanistic/other": 3
+      },
+      "citation_status": null,
+      "papers": [
+        {
+          "pmid": 34497008,
+          "title": "Updated Meta-Analysis of Cardiovascular Outcome Trials Evaluating Cardiovascular Efficacy of Glucagon-Like Peptide-1 Receptor Agonists.",
+          "year": null,
+          "journal": "",
+          "score": 1.1500000000000001,
+          "relevance": 1.0,
+          "overlap": 2,
+          "focus_overlap": 0,
+          "pub_boost": 0.1,
+          "citation_count": null,
+          "rcr": null,
+          "pubtypes": "",
+          "context_group": "clinical/review",
+          "judge": {
+            "relevance": 3,
+            "evidence_type": "meta-analysis",
+            "answers_question": true,
+            "population_or_model": "humans",
+            "reason": "The paper provides a meta-analysis of cardiovascular outcome trials, directly addressing the cardiovascular efficacy of GLP-1 agonists, which is the exact question asked.",
+            "model": "mlx-community/Qwen3-4B-4bit"
+          }
+        },
+        {
+          "pmid": 29935211,
+          "title": "Cardiovascular safety of GLP-1 receptor agonists for diabetes patients with high cardiovascular risk: A meta-analysis of cardiovascular outcomes trials.",
+          "year": null,
+          "journal": "",
+          "score": 1.0821850703395144,
+          "relevance": 0.8721850703395143,
+          "overlap": 3,
+          "focus_overlap": 1,
+          "pub_boost": 0.1,
+          "citation_count": null,
+          "rcr": null,
+          "pubtypes": "",
+          "context_group": "clinical/review",
+          "judge": {
+            "relevance": 3,
+            "evidence_type": "meta-analysis",
+            "answers_question": true,
+            "population_or_model": "humans",
+            "reason": "The paper directly addresses the cardiovascular safety of GLP-1 agonists in high-risk diabetes patients, providing meta-analytic evidence on cardiovascular outcomes.",
+            "model": "mlx-community/Qwen3-4B-4bit"
+          }
+        },
+        {
+          "pmid": 29445896,
+          "title": "GLP-1 Receptor Agonists and Cardiovascular Disease: a Meta-Analysis of Recent Cardiac Outcome Trials.",
+          "year": null,
+          "journal": "",
+          "score": 0.9377443931038701,
+          "relevance": 0.7277443931038701,
+          "overlap": 3,
+          "focus_overlap": 1,
+          "pub_boost": 0.1,
+          "citation_count": null,
+          "rcr": null,
+          "pubtypes": "",
+          "context_group": "clinical/review",
+          "judge": {
+            "relevance": 3,
+            "evidence_type": "meta-analysis",
+            "answers_question": true,
+            "population_or_model": "humans",
+            "reason": "The paper provides a meta-analysis of cardiovascular outcome trials, directly addressing the cardiovascular effects of GLP-1 agonists.",
+            "model": "mlx-community/Qwen3-4B-4bit"
+          }
+        },
+        {
+          "pmid": 29221659,
+          "title": "Cardiovascular outcomes with glucagon-like peptide-1 receptor agonists in patients with type 2 diabetes: a meta-analysis.",
+          "year": null,
+          "journal": "",
+          "score": 0.9193465674110836,
+          "relevance": 0.7093465674110835,
+          "overlap": 3,
+          "focus_overlap": 1,
+          "pub_boost": 0.1,
+          "citation_count": null,
+          "rcr": null,
+          "pubtypes": "",
+          "context_group": "clinical/review",
+          "judge": {
+            "relevance": 3,
+            "evidence_type": "meta-analysis",
+            "answers_question": true,
+            "population_or_model": "humans",
+            "reason": "The paper directly addresses the cardiovascular outcomes of GLP-1 agonists in type 2 diabetes patients, providing a meta-analysis of cardiovascular efficacy and safety.",
+            "model": "mlx-community/Qwen3-4B-4bit"
+          }
+        },
+        {
+          "pmid": 35030451,
+          "title": "Cardiovascular and mortality outcomes with GLP-1 receptor agonists in patients with type 2 diabetes: A meta-analysis with the FREEDOM cardiovascular outcomes trial.",
+          "year": null,
+          "journal": "",
+          "score": 0.8866074950690336,
+          "relevance": 0.6766074950690335,
+          "overlap": 3,
+          "focus_overlap": 1,
+          "pub_boost": 0.1,
+          "citation_count": null,
+          "rcr": null,
+          "pubtypes": "",
+          "context_group": "clinical/review",
+          "judge": {
+            "relevance": 3,
+            "evidence_type": "meta-analysis",
+            "answers_question": true,
+            "population_or_model": "humans",
+            "reason": "The paper provides a meta-analysis of cardiovascular and mortality outcomes with GLP-1 receptor agonists in patients with type 2 diabetes, directly addressing the question about cardiovascular outcomes.",
+            "model": "mlx-community/Qwen3-4B-4bit"
+          }
+        },
+        {
+          "pmid": 34144086,
+          "title": "GLP-1 receptor agonists for cardiovascular outcomes with and without metformin. A systematic review and meta-analysis of cardiovascular outcomes trials.",
+          "year": null,
+          "journal": "",
+          "score": 0.8545361723774573,
+          "relevance": 0.6045361723774572,
+          "overlap": 3,
+          "focus_overlap": 1,
+          "pub_boost": 0.14,
+          "citation_count": null,
+          "rcr": null,
+          "pubtypes": "",
+          "context_group": "clinical/review",
+          "judge": {
+            "relevance": 3,
+            "evidence_type": "meta-analysis",
+            "answers_question": true,
+            "population_or_model": "humans",
+            "reason": "The paper provides a meta-analysis of cardiovascular outcomes trials with GLP-1 receptor agonists, directly addressing the effect on cardiovascular outcomes as asked in the question.",
+            "model": "mlx-community/Qwen3-4B-4bit"
+          }
+        },
+        {
+          "pmid": 30223891,
+          "title": "Cardiovascular and microvascular outcomes of glucagon-like peptide-1 receptor agonists in type 2 diabetes: a meta-analysis of randomized controlled cardiovascular outcome trials with trial sequential analysis.",
+          "year": null,
+          "journal": "",
+          "score": 0.8463931623931625,
+          "relevance": 0.5863931623931624,
+          "overlap": 3,
+          "focus_overlap": 1,
+          "pub_boost": 0.15,
+          "citation_count": null,
+          "rcr": null,
+          "pubtypes": "",
+          "context_group": "clinical/review",
+          "judge": {
+            "relevance": 3,
+            "evidence_type": "meta-analysis",
+            "answers_question": true,
+            "population_or_model": "humans",
+            "reason": "The paper provides a meta-analysis of randomized controlled trials evaluating cardiovascular and microvascular outcomes of GLP-1 agonists in type 2 diabetes, directly addressing the question about cardiovascular outcomes.",
+            "model": "mlx-community/Qwen3-4B-4bit"
+          }
+        },
+        {
+          "pmid": 31422061,
+          "title": "GLP-1 receptor agonists and cardiovascular outcomes: an updated synthesis.",
+          "year": null,
+          "journal": "",
+          "score": 1.0491650627198514,
+          "relevance": 0.9391650627198513,
+          "overlap": 3,
+          "focus_overlap": 1,
+          "pub_boost": 0.0,
+          "citation_count": null,
+          "rcr": null,
+          "pubtypes": "",
+          "context_group": "mechanistic/other",
+          "judge": {
+            "relevance": 3,
+            "evidence_type": "systematic_review",
+            "answers_question": true,
+            "population_or_model": "humans",
+            "reason": "The paper provides an updated synthesis of GLP-1 receptor agonists and their cardiovascular outcomes, directly addressing the question with human outcome evidence.",
+            "model": "mlx-community/Qwen3-4B-4bit"
+          }
+        },
+        {
+          "pmid": 34383432,
+          "title": "SGLT2 Inhibitors or GLP-1 Receptor Agonists Reduce Cardiovascular Outcomes in Patients with Type 2 Diabetes.",
+          "year": null,
+          "journal": "",
+          "score": 0.9078138263852549,
+          "relevance": 0.7978138263852548,
+          "overlap": 3,
+          "focus_overlap": 1,
+          "pub_boost": 0.0,
+          "citation_count": null,
+          "rcr": null,
+          "pubtypes": "",
+          "context_group": "mechanistic/other",
+          "judge": {
+            "relevance": 3,
+            "evidence_type": "cohort",
+            "answers_question": true,
+            "population_or_model": "humans",
+            "reason": "The paper directly compares cardiovascular outcomes between SGLT2 inhibitors and GLP-1 receptor agonists in patients with type 2 diabetes, providing human outcome evidence relevant to the question about GLP-1 agonists and cardiovascular outcomes.",
+            "model": "mlx-community/Qwen3-4B-4bit"
+          }
+        },
+        {
+          "pmid": 27849161,
+          "title": "Liraglutide, a GLP-1 receptor agonist, prevents cardiovascular outcomes in patients with type 2 diabetes.",
+          "year": null,
+          "journal": "",
+          "score": 0.9027929418251998,
+          "relevance": 0.8127929418251997,
+          "overlap": 2,
+          "focus_overlap": 1,
+          "pub_boost": 0.0,
+          "citation_count": null,
+          "rcr": null,
+          "pubtypes": "",
+          "context_group": "mechanistic/other",
+          "judge": {
+            "relevance": 3,
+            "evidence_type": "randomized_trial",
+            "answers_question": true,
+            "population_or_model": "humans",
+            "reason": "The paper directly addresses the effect of Liraglutide (a GLP-1 agonist) on cardiovascular outcomes in patients with type 2 diabetes, providing human outcome evidence.",
+            "model": "mlx-community/Qwen3-4B-4bit"
+          }
+        }
+      ],
+      "answer": null,
+      "manual_review": {
+        "retrieval_relevance_1_to_5": null,
+        "output_diversity_1_to_5": null,
+        "notes": ""
+      },
+      "judge_summary": {
+        "model": "mlx-community/Qwen3-4B-4bit",
+        "mean_relevance": 3.0,
+        "relevance_at_3plus": 10,
+        "relevance_at_2plus": 10,
+        "irrelevant_count": 0,
+        "judged_count": 10
+      }
+    }
+  ],
+  "judge": {
+    "provider": "mlx",
+    "model": "mlx-community/Qwen3-4B-4bit",
+    "base_url": null
+  }
+}
