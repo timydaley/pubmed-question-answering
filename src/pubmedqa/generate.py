@@ -118,8 +118,17 @@ def answer(question, papers, per_paper=False, markdown=True):
     return _validate_citations(text.strip(), {p["pmid"] for p in papers})
 
 
+def cited_pmids(text):
+    """Extract PMID citations from [123], [123, 456], or [PMID:123] forms."""
+    out = set()
+    for bracket in re.findall(r"\[([^\]]+)\]", text or ""):
+        for m in re.findall(r"\b\d{5,9}\b", bracket):
+            out.add(int(m))
+    return out
+
+
 def _validate_citations(text, valid_pmids):
-    cited = {int(m) for m in re.findall(r"\[(\d+)\]", text)}
+    cited = cited_pmids(text)
     hallucinated = cited - valid_pmids
     if hallucinated:
         text += (

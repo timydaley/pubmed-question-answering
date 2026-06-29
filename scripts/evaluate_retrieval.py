@@ -7,7 +7,6 @@ whether the answer cites only retrieved PMIDs.
 """
 import argparse
 import json
-import re
 import sys
 import time
 from pathlib import Path
@@ -40,7 +39,7 @@ def _load_questions(path):
 
 
 def _citation_status(answer, pmids):
-    cited = {int(m) for m in re.findall(r"\[(\d+)\]", answer or "")}
+    cited = generate.cited_pmids(answer or "")
     return {
         "cited_pmids": sorted(cited),
         "invalid_cited_pmids": sorted(cited - set(pmids)),
