@@ -24,7 +24,7 @@ QRY_MAXLEN = 64    # MedCPT query encoder
 # --- LLM (local MLX on Apple Silicon) ---------------------------------------
 LLM_BACKEND = os.environ.get("PUBMEDQA_LLM_BACKEND", "mlx")
 LLM_MODEL = os.environ.get("PUBMEDQA_LLM", "mlx-community/Llama-3.1-8B-Instruct-4bit")
-LLM_MAX_TOKENS = int(os.environ.get("PUBMEDQA_LLM_MAX_TOKENS", "600"))
+LLM_MAX_TOKENS = int(os.environ.get("PUBMEDQA_LLM_MAX_TOKENS", "2500"))
 LLM_TEMPERATURE = float(os.environ.get("PUBMEDQA_LLM_TEMPERATURE", "0.0"))
 
 # --- Retrieval (v1 = lean: RRF-only, cross-encoder OFF) ----------------------
