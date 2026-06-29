@@ -72,6 +72,10 @@ def main():
     ap.add_argument("--no-fetch", action="store_true", help="do not fetch missing papers from PubMed")
     ap.add_argument("--require-abstract", action="store_true", help="efetch rows missing abstracts")
     ap.add_argument("--plain-text", action="store_true", help="disable markdown headings")
+    ap.add_argument("--map-reduce", action="store_true",
+                    help="first generate one evidence note per paper, then synthesize; useful for 12+ papers")
+    ap.add_argument("--map-reduce-threshold", type=int, default=12,
+                    help="automatically use map-reduce when paper count is at least this value")
     ap.add_argument("--out", type=Path)
     args = ap.parse_args()
 
@@ -95,6 +99,8 @@ def main():
         fetch_missing=not args.no_fetch,
         require_abstract=args.require_abstract,
         markdown=not args.plain_text,
+        map_reduce=args.map_reduce,
+        map_reduce_threshold=args.map_reduce_threshold,
     )
     print(f"Loaded {len(papers)} papers", file=sys.stderr)
 

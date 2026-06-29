@@ -88,16 +88,34 @@ def _context(papers: list[dict], max_abstract_chars: int = 5000) -> str:
         abstract = p.get("abstract") or ""
         if len(abstract) > max_abstract_chars:
             abstract = abstract[:max_abstract_chars] + "...[truncated]"
+        blocks.append(_paper_block(p, abstract=abstract))
+    return "\n\n".join(blocks)
+
+
+def _paper_block(p: dict, abstract: Optional[str] = None) -> str:
+    abstract = p.get("abstract") or "" if abstract is None else abstract
+    return (
+        f"[{p['pmid']}] ({p.get('year') or '?'}, {p.get('journal') or ''}; "
+        f"types={p.get('pubtypes') or ''})\n"
+        f"Title: {p.get('title') or ''}\n"
+        f"Abstract: {abstract}"
+    )
+
+
+def _notes_context(papers: list[dict], notes: dict[int, str]) -> str:
+    blocks = []
+    for p in papers:
         blocks.append(
             f"[{p['pmid']}] ({p.get('year') or '?'}, {p.get('journal') or ''}; "
             f"types={p.get('pubtypes') or ''})\n"
             f"Title: {p.get('title') or ''}\n"
-            f"Abstract: {abstract}"
+            f"Evidence note: {notes.get(int(p['pmid']), '').strip()}"
         )
     return "\n\n".join(blocks)
 
 
-def _build_prompt(papers: list[dict], tokenizer, topic: Optional[str] = None, markdown: bool = True) -> str:
+def _build_prompt(papers: list[dict], tokenizer, topic: Optional[str] = None,
+                  markdown: bool = True, context_text: Optional[str] = None) -> str:
     topic_line = f"Topic / synthesis goal: {topic}\n\n" if topic else ""
     if markdown:
         structure = (
@@ -119,13 +137,13 @@ def _build_prompt(papers: list[dict], tokenizer, topic: Optional[str] = None, ma
     pmid_list = ", ".join(str(p["pmid"]) for p in papers)
     n_papers = len(papers)
     user = (
-        f"PUBMED ABSTRACTS:\n{_context(papers)}\n\n"
+        f"PUBMED EVIDENCE:\n{context_text if context_text is not None else _context(papers)}\n\n"
         f"{topic_line}"
         f"{structure}"
         "Requirements:\n"
         "- Every factual claim must include inline [PMID] citations.\n"
         f"- In 'Paper-specific findings', write EXACTLY {n_papers} bullets total: one bullet for each PMID in this checklist and no extra bullets: {pmid_list}.\n"
-        "- Each paper-specific bullet must name the paper or topic, state the specific result/finding from that abstract, and cite that PMID exactly once.\n"
+        "- Each paper-specific bullet must name the paper or topic, state the specific result/finding from the abstract/evidence note, and cite that PMID exactly once.\n"
         "- Do not repeat a PMID in multiple paper-specific bullets. Do not create bullets for imagined subtopics or repeated variants of the same paper.\n"
         "- In 'Cross-paper synthesis', compare the paper-specific findings; do not merely repeat the bullets.\n"
         "- Distinguish human clinical evidence from mechanistic, animal, or cell-line evidence.\n"
@@ -141,38 +159,99 @@ def _build_prompt(papers: list[dict], tokenizer, topic: Optional[str] = None, ma
     return tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
 
 
-def summarize_papers(papers: list[dict], topic: Optional[str] = None, markdown: bool = True) -> str:
-    """Generate an overall cited summary for already-loaded paper dicts."""
+def _mlx_generate_text(prompt: str, max_tokens: int) -> str:
+    model, tokenizer = _load_mlx()
+    try:
+        from mlx_lm import generate as mlx_generate
+        from mlx_lm.sample_utils import make_sampler
+    except ImportError as e:
+        raise RuntimeError("MLX backend not installed. Run: pip install -r requirements.txt") from e
+    return mlx_generate(
+        model,
+        tokenizer,
+        prompt=prompt,
+        max_tokens=max_tokens,
+        sampler=make_sampler(temp=config.LLM_TEMPERATURE),
+        verbose=False,
+    )
+
+
+def _paper_note_prompt(paper: dict, tokenizer, topic: Optional[str] = None) -> str:
+    topic_line = f"Topic: {topic}\n" if topic else ""
+    user = (
+        f"{topic_line}"
+        f"Paper:\n{_paper_block(paper)}\n\n"
+        "Write one compact evidence note for this paper only. Include: study design if stated, "
+        "population/cancer/model, endpoint, main result and direction of effect, and any limitation. "
+        f"Use 2-4 sentences and cite only [{paper['pmid']}]."
+    )
+    messages = [
+        {"role": "system", "content": SYSTEM},
+        {"role": "user", "content": user},
+    ]
+    return tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+
+
+def paper_evidence_notes(papers: list[dict], topic: Optional[str] = None,
+                         max_tokens_per_paper: int = 220) -> dict[int, str]:
+    """Create one grounded evidence note per paper for map-reduce synthesis."""
+    if config.LLM_BACKEND != "mlx":
+        raise RuntimeError(f"Unsupported LLM backend: {config.LLM_BACKEND}. Expected 'mlx'.")
+    model, tokenizer = _load_mlx()
+    notes = {}
+    for p in papers:
+        prompt = _paper_note_prompt(p, tokenizer, topic=topic)
+        try:
+            from mlx_lm import generate as mlx_generate
+            from mlx_lm.sample_utils import make_sampler
+        except ImportError as e:
+            raise RuntimeError("MLX backend not installed. Run: pip install -r requirements.txt") from e
+        text = mlx_generate(
+            model,
+            tokenizer,
+            prompt=prompt,
+            max_tokens=max_tokens_per_paper,
+            sampler=make_sampler(temp=config.LLM_TEMPERATURE),
+            verbose=False,
+        ).strip()
+        notes[int(p["pmid"])] = _validate_citations(text, {int(p["pmid"])})
+    return notes
+
+
+def summarize_papers(papers: list[dict], topic: Optional[str] = None, markdown: bool = True,
+                     map_reduce: bool = False, map_reduce_threshold: int = 12) -> str:
+    """Generate an overall cited summary for already-loaded paper dicts.
+
+    For larger paper sets, map-reduce first creates one evidence note per paper,
+    then synthesizes those notes. This prevents long-context summaries from
+    degenerating into title lists or repeated bullets.
+    """
     if config.LLM_BACKEND != "mlx":
         raise RuntimeError(f"Unsupported LLM backend: {config.LLM_BACKEND}. Expected 'mlx'.")
     if not papers:
         raise ValueError("No papers available to summarize")
 
     model, tokenizer = _load_mlx()
-    prompt = _build_prompt(papers, tokenizer, topic=topic, markdown=markdown)
-    try:
-        from mlx_lm import generate as mlx_generate
-        from mlx_lm.sample_utils import make_sampler
-    except ImportError as e:
-        raise RuntimeError("MLX backend not installed. Run: pip install -r requirements.txt") from e
+    context_text = None
+    if map_reduce or len(papers) >= map_reduce_threshold:
+        notes = paper_evidence_notes(papers, topic=topic)
+        context_text = _notes_context(papers, notes)
 
-    text = mlx_generate(
-        model,
-        tokenizer,
-        prompt=prompt,
-        max_tokens=config.LLM_MAX_TOKENS,
-        sampler=make_sampler(temp=config.LLM_TEMPERATURE),
-        verbose=False,
-    )
+    prompt = _build_prompt(papers, tokenizer, topic=topic, markdown=markdown,
+                           context_text=context_text)
+    text = _mlx_generate_text(prompt, max_tokens=config.LLM_MAX_TOKENS)
     return _validate_citations(text.strip(), {int(p["pmid"]) for p in papers})
 
 
 def summarize_pmids(pmids: Iterable[int], topic: Optional[str] = None,
                     fetch_missing: bool = True, require_abstract: bool = False,
-                    markdown: bool = True) -> tuple[str, list[dict]]:
+                    markdown: bool = True, map_reduce: bool = False,
+                    map_reduce_threshold: int = 12) -> tuple[str, list[dict]]:
     """Load PMIDs, summarize them, and return (summary, papers_used)."""
     papers = load_papers(pmids, fetch_missing=fetch_missing, require_abstract=require_abstract)
-    return summarize_papers(papers, topic=topic, markdown=markdown), papers
+    return summarize_papers(papers, topic=topic, markdown=markdown,
+                            map_reduce=map_reduce,
+                            map_reduce_threshold=map_reduce_threshold), papers
 
 
 def cited_pmids_from_text(text: str) -> list[int]:
