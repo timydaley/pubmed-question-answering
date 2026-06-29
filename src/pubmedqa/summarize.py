@@ -101,9 +101,10 @@ def _build_prompt(papers: list[dict], tokenizer, topic: Optional[str] = None, ma
     topic_line = f"Topic / synthesis goal: {topic}\n\n" if topic else ""
     if markdown:
         structure = (
-            "Write a concise overall synthesis using exactly these markdown sections:\n"
+            "Write a detailed evidence synthesis using exactly these markdown sections:\n"
             "## Overall summary\n"
-            "## Major themes\n"
+            "## Paper-specific findings\n"
+            "## Cross-paper synthesis\n"
             "## Evidence quality\n"
             "## Agreements and conflicts\n"
             "## Gaps / cautions\n"
@@ -111,8 +112,8 @@ def _build_prompt(papers: list[dict], tokenizer, topic: Optional[str] = None, ma
         )
     else:
         structure = (
-            "Write a concise overall synthesis using exactly these sections:\n"
-            "Overall summary:\nMajor themes:\nEvidence quality:\n"
+            "Write a detailed evidence synthesis using exactly these sections:\n"
+            "Overall summary:\nPaper-specific findings:\nCross-paper synthesis:\nEvidence quality:\n"
             "Agreements and conflicts:\nGaps / cautions:\nTakeaway:\n\n"
         )
     user = (
@@ -121,8 +122,11 @@ def _build_prompt(papers: list[dict], tokenizer, topic: Optional[str] = None, ma
         f"{structure}"
         "Requirements:\n"
         "- Every factual claim must include inline [PMID] citations.\n"
-        "- Synthesize across papers; do not merely list abstracts.\n"
+        "- In 'Paper-specific findings', include one bullet for EACH provided PMID. Each bullet must name the paper or topic, state the specific result/finding from that abstract, and cite that PMID.\n"
+        "- In 'Cross-paper synthesis', compare the paper-specific findings; do not merely repeat the bullets.\n"
         "- Distinguish human clinical evidence from mechanistic, animal, or cell-line evidence.\n"
+        "- Describe study design, population/cancer type/model, endpoint, and direction of effect when the abstract provides them.\n"
+        "- Do not call evidence high quality unless the abstract supports that; prefer precise descriptions such as randomized trial, cohort, retrospective study, systematic review, or cell-line study.\n"
         "- Mention whether the evidence set is narrow, indirect, conflicting, or insufficient.\n"
         "- Keep the summary grounded only in the provided abstracts."
     )
