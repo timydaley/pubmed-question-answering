@@ -20,6 +20,7 @@ baseline_retrieval*.json
 !baseline_retrieval_expanded_entityfix_v1.json
 baseline_with_answers*.json
 !baseline_with_answers_v4.json
+!baseline_with_answers_expanded_entityfix_v1.json
 judged_retrieval*.json
 !judged_retrieval_qwen3_v4.json
 !judged_retrieval_qwen3_v4_strict.json
