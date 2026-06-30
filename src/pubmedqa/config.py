@@ -53,6 +53,11 @@ CLINICAL_QUERY_MECH_QUOTA = 3
 ALPHA = 0.10          # impact weight (booster, not override)
 RELEVANCE_GATE = 0.0  # min normalized fused score before impact can reorder
 IMPACT_FLOOR = 0.10   # cold-start floor: new/zero-citation papers still surface
+RECENCY_HALF_LIFE_YEARS = 8.0
+CITATION_RATE_TARGET_PER_YEAR = 25.0
+IMPACT_RCR_WEIGHT = 0.55
+IMPACT_CITATION_RATE_WEIGHT = 0.30
+IMPACT_RECENCY_WEIGHT = 0.15
 
 # --- External sources --------------------------------------------------------
 PUBMED_BASELINE_BASE = "https://ftp.ncbi.nlm.nih.gov/pubmed/baseline/"

@@ -28,6 +28,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
+import lancedb
+
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
@@ -161,15 +163,76 @@ def build_report_template(args):
             "docs_inserted": 0,
             "vectors_inserted": 0,
             "pmids_seen": 0,
+            "unique_pmids_seen": 0,
+            "duplicate_pmids_seen": 0,
             "pmid_vector_rows": 0,
             "records_with_text": 0,
             "records_missing_text": 0,
             "records_missing_abstract": 0,
+            "records_missing_year": 0,
             "citations_loaded": 0,
             "citation_rows_missing": None,
         },
         "chunk_reports": [],
     }
+
+
+def _lancedb_row_count():
+    try:
+        tbl = lancedb.connect(str(config.LANCE_DIR)).open_table(config.LANCE_TABLE)
+        return tbl.count_rows()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+def _pct(part, total):
+    return round((part / total) * 100, 3) if total else 0.0
+
+
+def finalize_integrity_report(con, report):
+    stats = report["stats"]
+    docs = con.execute("SELECT COUNT(*) FROM papers").fetchone()[0]
+    with_abstract = con.execute("SELECT COUNT(*) FROM papers WHERE abstract != ''").fetchone()[0]
+    with_year = con.execute("SELECT COUNT(*) FROM papers WHERE year IS NOT NULL").fetchone()[0]
+    citation_rows = con.execute("SELECT COUNT(*) FROM citations").fetchone()[0]
+    unique_pmids = con.execute("SELECT COUNT(DISTINCT pmid) FROM papers").fetchone()[0]
+    lance_rows = _lancedb_row_count()
+
+    stats["sqlite_paper_rows"] = docs
+    stats["sqlite_unique_pmids"] = unique_pmids
+    stats["sqlite_rows_with_abstract"] = with_abstract
+    stats["sqlite_rows_missing_abstract"] = max(0, docs - with_abstract)
+    stats["sqlite_rows_with_year"] = with_year
+    stats["sqlite_rows_missing_year"] = max(0, docs - with_year)
+    stats["sqlite_citation_rows"] = citation_rows
+    stats["lancedb_vector_rows"] = lance_rows
+    stats["pmid_match_rate"] = round(stats["vectors_inserted"] / docs, 6) if docs else 0.0
+    stats["abstract_coverage_pct"] = _pct(with_abstract, docs)
+    stats["year_coverage_pct"] = _pct(with_year, docs)
+    stats["citation_coverage_pct"] = _pct(citation_rows, docs)
+
+    checks = []
+
+    def check(name, ok, detail):
+        checks.append({"name": name, "status": "pass" if ok else "warn", "detail": detail})
+
+    check("sqlite_rows_equal_unique_pmids", docs == unique_pmids,
+          f"sqlite rows={docs}, unique_pmids={unique_pmids}")
+    check("vectors_equal_sqlite_rows", stats["vectors_inserted"] == docs,
+          f"vectors_inserted={stats['vectors_inserted']}, sqlite rows={docs}")
+    check("lancedb_rows_equal_vectors", isinstance(lance_rows, int) and lance_rows == stats["vectors_inserted"],
+          f"lancedb rows={lance_rows}, vectors_inserted={stats['vectors_inserted']}")
+    check("all_rows_have_text", stats["records_missing_text"] == 0,
+          f"missing_text={stats['records_missing_text']}")
+    check("abstract_coverage_at_least_95pct", stats["abstract_coverage_pct"] >= 95.0,
+          f"abstract_coverage_pct={stats['abstract_coverage_pct']}")
+    if report.get("fetch_citations"):
+        check("citation_coverage_at_least_95pct", stats["citation_coverage_pct"] >= 95.0,
+              f"citation_coverage_pct={stats['citation_coverage_pct']}")
+
+    report["integrity_checks"] = checks
+    report["integrity_status"] = "pass" if all(c["status"] == "pass" for c in checks) else "warn"
+    return report
 
 
 def write_report(report):
@@ -207,6 +270,7 @@ def main():
     db.init_db(con)
 
     report = build_report_template(args)
+    seen_pmids = set()
     first = not config.LANCE_DIR.exists()
 
     for chunk in args.chunks:
@@ -217,7 +281,10 @@ def main():
         pmids, vecs, records, text_rows, vector_rows = load_chunk(chunk, rows=args.rows)
         have_text = sum(1 for r in records if r.get("title") or r.get("abstract"))
         missing_abstract = sum(1 for r in records if not r.get("abstract"))
+        missing_year = sum(1 for r in records if not r.get("year"))
         missing_text = len(records) - have_text
+        duplicate_pmids = sum(1 for p in pmids if p in seen_pmids)
+        seen_pmids.update(pmids)
 
         db.insert_papers(con, records)
         if first:
@@ -229,10 +296,13 @@ def main():
         report["stats"]["docs_inserted"] += len(records)
         report["stats"]["vectors_inserted"] += len(pmids)
         report["stats"]["pmids_seen"] += len(pmids)
+        report["stats"]["unique_pmids_seen"] = len(seen_pmids)
+        report["stats"]["duplicate_pmids_seen"] += duplicate_pmids
         report["stats"]["pmid_vector_rows"] += vector_rows
         report["stats"]["records_with_text"] += have_text
         report["stats"]["records_missing_text"] += missing_text
         report["stats"]["records_missing_abstract"] += missing_abstract
+        report["stats"]["records_missing_year"] += missing_year
         report["chunk_reports"].append({
             "chunk": chunk,
             "rows_ingested": len(pmids),
@@ -241,9 +311,11 @@ def main():
             "records_with_text": have_text,
             "records_missing_text": missing_text,
             "records_missing_abstract": missing_abstract,
+            "records_missing_year": missing_year,
+            "duplicate_pmids_seen_before_chunk": duplicate_pmids,
         })
         print(f"  inserted {len(records)} papers / {len(pmids)} vectors")
-        print(f"  text rows={have_text}, missing text={missing_text}, missing abstract={missing_abstract}")
+        print(f"  text rows={have_text}, missing text={missing_text}, missing abstract={missing_abstract}, missing year={missing_year}, duplicate pmids={duplicate_pmids}")
 
     print("\nrebuilding FTS5 index ...")
     db.rebuild_fts(con)
@@ -266,15 +338,15 @@ def main():
             "num_sub_vectors": args.num_sub_vectors,
         }
 
-    docs = con.execute("SELECT COUNT(*) FROM papers").fetchone()[0]
+    report = finalize_integrity_report(con, report)
+    docs = report["stats"]["sqlite_paper_rows"]
     vec_docs = report["stats"]["vectors_inserted"]
-    report["stats"]["sqlite_paper_rows"] = docs
-    report["stats"]["pmid_match_rate"] = round(vec_docs / docs, 6) if docs else 0.0
 
     write_report(report)
     print("\nDONE")
     print(f"  papers:   {docs}")
     print(f"  vectors:  {vec_docs}")
+    print(f"  integrity:{report['integrity_status']}")
     print(f"  report:   {REPORT_PATH}")
     print(f"  sqlite:   {config.SQLITE_PATH}")
     print(f"  lancedb:  {config.LANCE_DIR}")
