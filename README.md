@@ -57,6 +57,8 @@ python scripts/p0_ask.py --no-llm --show-groups "statins and dementia"  # inspec
 python scripts/p0_ask.py --top 20 --second-pass-summary --summary-source retrieved --map-reduce \
   --summary-notes-out p53_notes.json \
   "p53 mutation and cancer prognosis"                                   # deeper evidence synthesis
+python scripts/p0_ask.py --second-pass-summary --summary-source cited --max-cited-summary-papers 5 \
+  "does metformin reduce cancer risk?"                                  # selective cited-paper synthesis
 ```
 
 ### Phase 0 success criteria (from the plan)

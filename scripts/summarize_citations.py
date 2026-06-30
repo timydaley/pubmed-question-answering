@@ -78,6 +78,7 @@ def main():
                     help="automatically use map-reduce when paper count is at least this value")
     ap.add_argument("--out", type=Path)
     ap.add_argument("--notes-out", type=Path, help="write map-reduce per-paper evidence notes to JSON")
+    ap.add_argument("--max-papers", type=int, help="limit selected PMIDs after de-duplication")
     args = ap.parse_args()
 
     pmids = list(args.pmids)
@@ -90,6 +91,10 @@ def main():
         topic = topic or eval_topic
 
     pmids = summarize.unique_pmids(pmids)
+    if args.max_papers is not None:
+        if args.max_papers <= 0:
+            raise SystemExit("--max-papers must be positive")
+        pmids = pmids[:args.max_papers]
     if not pmids:
         raise SystemExit("No PMIDs selected")
 

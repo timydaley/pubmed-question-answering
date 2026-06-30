@@ -29,6 +29,7 @@ def main():
     ap.add_argument("--map-reduce", action="store_true", help="use map-reduce summarization for the second-pass summary")
     ap.add_argument("--map-reduce-threshold", type=int, default=12, help="automatically use map-reduce at or above this paper count")
     ap.add_argument("--summary-notes-out", type=Path, help="write second-pass map-reduce per-paper evidence notes to JSON")
+    ap.add_argument("--max-cited-summary-papers", type=int, help="limit --summary-source cited to the first N cited retrieved papers")
     args = ap.parse_args()
     question = " ".join(args.question)
 
@@ -71,6 +72,10 @@ def main():
             raise SystemExit("--summary-source cited requires normal answer generation; omit --no-llm or use --summary-source retrieved")
         selected = set(summarize.cited_pmids_from_text(answer_text))
         summary_papers = [p for p in papers if int(p["pmid"]) in selected]
+        if args.max_cited_summary_papers is not None:
+            if args.max_cited_summary_papers <= 0:
+                raise SystemExit("--max-cited-summary-papers must be positive")
+            summary_papers = summary_papers[:args.max_cited_summary_papers]
         if not summary_papers:
             raise SystemExit("No cited retrieved PMIDs found for second-pass summary")
     else:

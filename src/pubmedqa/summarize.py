@@ -124,6 +124,7 @@ def _build_prompt(papers: list[dict], tokenizer, topic: Optional[str] = None,
         structure = (
             "Write a detailed evidence synthesis using exactly these markdown sections:\n"
             "## Overall summary\n"
+            "## Evidence basis\n"
             "## Paper-specific findings\n"
             "## Cross-paper synthesis\n"
             "## Evidence quality\n"
@@ -134,7 +135,7 @@ def _build_prompt(papers: list[dict], tokenizer, topic: Optional[str] = None,
     else:
         structure = (
             "Write a detailed evidence synthesis using exactly these sections:\n"
-            "Overall summary:\nPaper-specific findings:\nCross-paper synthesis:\nEvidence quality:\n"
+            "Overall summary:\nEvidence basis:\nPaper-specific findings:\nCross-paper synthesis:\nEvidence quality:\n"
             "Agreements and conflicts:\nGaps / cautions:\nTakeaway:\n\n"
         )
     pmid_list = ", ".join(str(p["pmid"]) for p in papers)
@@ -145,6 +146,8 @@ def _build_prompt(papers: list[dict], tokenizer, topic: Optional[str] = None,
         f"{structure}"
         "Requirements:\n"
         "- Every factual claim must include inline [PMID] citations.\n"
+        "- In 'Evidence basis', write one concise sentence describing the evidence types and populations/models represented in the paper set.\n"
+        "- Explicitly distinguish risk/incidence/prevention from survival after diagnosis, treatment response, surrogate outcomes, and mechanistic findings.\n"
         f"- In 'Paper-specific findings', write EXACTLY {n_papers} bullets total: one bullet for each PMID in this checklist and no extra bullets: {pmid_list}.\n"
         "- Each paper-specific bullet must name the paper or topic, state the specific result/finding from the abstract/evidence note, and cite that PMID exactly once.\n"
         "- Do not repeat a PMID in multiple paper-specific bullets. Do not create bullets for imagined subtopics or repeated variants of the same paper.\n"

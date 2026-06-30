@@ -51,6 +51,7 @@ def _build_prompt(question, papers, tokenizer, per_paper=False, markdown=True):
         structure = (
             "Write a concise structured summary using exactly these markdown sections:\n"
             "## Short answer\n"
+            "## Evidence basis\n"
             "## Evidence summary\n"
             f"{paper_heading}"
             "## Key papers\n"
@@ -61,6 +62,7 @@ def _build_prompt(question, papers, tokenizer, per_paper=False, markdown=True):
         structure = (
             "Write a concise structured summary using exactly these sections:\n"
             "Short answer:\n"
+            "Evidence basis:\n"
             "Evidence summary:\n"
             f"{paper_section}"
             "Key papers:\n"
@@ -74,8 +76,10 @@ def _build_prompt(question, papers, tokenizer, per_paper=False, markdown=True):
         f"{structure}"
         "Requirements:\n"
         "- Every factual claim must include inline [PMID] citations.\n"
+        "- In 'Evidence basis', write one concise sentence describing the evidence type and population/context, e.g. randomized outcome trials, observational cohorts/meta-analyses, or mechanistic/cell-line evidence.\n"
+        "- Explicitly distinguish risk/incidence/prevention from survival after diagnosis, treatment response, surrogate outcomes, and mechanistic findings.\n"
         f"{paper_req}"
-        "- In 'Key papers', include 3-5 bullets, each naming the paper's main contribution.\n"
+        "- In 'Key papers', include 3-5 bullets, each naming the paper's main contribution. Prefer the strongest and most directly relevant human clinical evidence for clinical questions.\n"
         "- In 'Uncertainty / conflicts', explicitly mention weak evidence, old evidence, observational/confounded evidence, indirect mechanistic evidence, or disagreement.\n"
         "- For observational associations, do not answer with an unqualified 'yes'; say the retrieved evidence suggests an association and note residual confounding.\n"
         "- Do not infer clinical benefit from cell-line, animal, or mechanistic papers alone.\n"
