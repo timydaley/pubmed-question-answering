@@ -54,6 +54,9 @@ size the daily-delta path; the bulk corpus is downloaded, not embedded locally).
 python scripts/p0_ask.py "does metformin reduce cancer risk?"
 python scripts/p0_ask.py --no-llm "statins and dementia"                # retrieval only, no LLM
 python scripts/p0_ask.py --no-llm --show-groups "statins and dementia"  # inspect balanced context groups
+python scripts/p0_ask.py --top 20 --second-pass-summary --summary-source retrieved --map-reduce \
+  --summary-notes-out p53_notes.json \
+  "p53 mutation and cancer prognosis"                                   # deeper evidence synthesis
 ```
 
 ### Phase 0 success criteria (from the plan)
@@ -119,10 +122,12 @@ src/pubmedqa/
   citations.py     iCite citation_count + RCR
   retrieve.py      BM25 + dense -> RRF -> bounded citation re-score
   generate.py      MLX answer + [PMID] citation validation
+  summarize.py     second-pass cited/retrieved-paper synthesis
 scripts/
   p0_download_sample.py  p0_build_index.py  p0_ask.py
   p0b_verify_precomputed.py  download_precomputed_embeddings.py
   build_snapshot_from_precomputed.py  evaluate_retrieval.py
+  summarize_citations.py  judge_retrieval.py  compare_eval.py
 ```
 
 ### Small retrieval benchmark

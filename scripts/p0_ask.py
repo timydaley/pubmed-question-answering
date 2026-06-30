@@ -12,7 +12,7 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-from pubmedqa import db, retrieve, generate  # noqa: E402
+from pubmedqa import db, retrieve, generate, summarize  # noqa: E402
 
 
 def main():
@@ -24,6 +24,11 @@ def main():
     ap.add_argument("--per-paper-summaries", action="store_true", help="include a short note for each retrieved paper in the final summary")
     ap.add_argument("--plain-text", action="store_true", help="disable markdown headings in the summary")
     ap.add_argument("--show-groups", action="store_true", help="show balanced-context group labels in the retrieved-paper list")
+    ap.add_argument("--second-pass-summary", action="store_true", help="after the normal answer, synthesize cited or retrieved papers in more detail")
+    ap.add_argument("--summary-source", choices=("cited", "retrieved"), default="cited", help="PMIDs to use for --second-pass-summary")
+    ap.add_argument("--map-reduce", action="store_true", help="use map-reduce summarization for the second-pass summary")
+    ap.add_argument("--map-reduce-threshold", type=int, default=12, help="automatically use map-reduce at or above this paper count")
+    ap.add_argument("--summary-notes-out", type=Path, help="write second-pass map-reduce per-paper evidence notes to JSON")
     args = ap.parse_args()
     question = " ".join(args.question)
 
@@ -43,16 +48,50 @@ def main():
                   f"cites={p.get('citation_count')} ({p.get('year')}){group} "
                   f"{(p.get('title') or '')[:90]}")
 
-    if args.no_llm:
+    answer_text = ""
+    if not args.no_llm:
+        if not args.summary_only:
+            print("\n=== Summary (local MLX, grounded) ===")
+        t_answer = time.time()
+        answer_text = generate.answer(
+            question,
+            papers,
+            per_paper=args.per_paper_summaries,
+            markdown=not args.plain_text,
+        )
+        print(answer_text)
+        if not args.summary_only:
+            print(f"\n[answer-generation: {time.time() - t_answer:.2f}s]", file=sys.stderr)
+
+    if not args.second_pass_summary:
         return
+
+    if args.summary_source == "cited":
+        if not answer_text:
+            raise SystemExit("--summary-source cited requires normal answer generation; omit --no-llm or use --summary-source retrieved")
+        selected = set(summarize.cited_pmids_from_text(answer_text))
+        summary_papers = [p for p in papers if int(p["pmid"]) in selected]
+        if not summary_papers:
+            raise SystemExit("No cited retrieved PMIDs found for second-pass summary")
+    else:
+        summary_papers = papers
+
     if not args.summary_only:
-        print("\n=== Summary (local MLX, grounded) ===")
-    print(generate.answer(
-        question,
-        papers,
-        per_paper=args.per_paper_summaries,
+        pmids = ", ".join(str(p["pmid"]) for p in summary_papers)
+        print(f"\n=== Second-pass evidence synthesis ({args.summary_source}; {len(summary_papers)} papers: {pmids}) ===")
+
+    t_summary = time.time()
+    summary_text = summarize.summarize_papers(
+        summary_papers,
+        topic=question,
         markdown=not args.plain_text,
-    ))
+        map_reduce=args.map_reduce,
+        map_reduce_threshold=args.map_reduce_threshold,
+        notes_out=args.summary_notes_out,
+    )
+    print(summary_text)
+    if not args.summary_only:
+        print(f"\n[second-pass-summary: {time.time() - t_summary:.2f}s]", file=sys.stderr)
 
 
 if __name__ == "__main__":

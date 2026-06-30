@@ -6,7 +6,8 @@ from . import config
 
 SYSTEM = (
     "You are a careful biomedical assistant. Answer ONLY from the provided abstracts. "
-    "Cite every claim inline as [PMID]. If the evidence is insufficient or the abstracts "
+    "Cite every claim inline as [PMID]. Use cautious language for observational, retrospective, "
+    "case-control, mechanistic, animal, or cell-line evidence: say associated with, not proves/causes/reduces, unless randomized trial evidence supports causality. If the evidence is insufficient or the abstracts "
     "conflict, say so explicitly. When sources disagree, weight your synthesis toward "
     "higher-impact (higher RCR / more cited) and higher-evidence-tier studies "
     "(systematic reviews, meta-analyses, RCTs). Produce a structured evidence summary, "
@@ -75,7 +76,9 @@ def _build_prompt(question, papers, tokenizer, per_paper=False, markdown=True):
         "- Every factual claim must include inline [PMID] citations.\n"
         f"{paper_req}"
         "- In 'Key papers', include 3-5 bullets, each naming the paper's main contribution.\n"
-        "- In 'Uncertainty / conflicts', explicitly mention weak evidence, old evidence, or disagreement.\n"
+        "- In 'Uncertainty / conflicts', explicitly mention weak evidence, old evidence, observational/confounded evidence, indirect mechanistic evidence, or disagreement.\n"
+        "- For observational associations, do not answer with an unqualified 'yes'; say the retrieved evidence suggests an association and note residual confounding.\n"
+        "- Do not infer clinical benefit from cell-line, animal, or mechanistic papers alone.\n"
         "- If the evidence is insufficient, say so clearly.\n"
         "- Keep the answer grounded only in the provided abstracts."
     )

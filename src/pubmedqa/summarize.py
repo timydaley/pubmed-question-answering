@@ -4,10 +4,12 @@ This module is for the second-stage workflow: given a list of citation PMIDs,
 load the papers, read their abstracts, and synthesize an overall grounded summary
 with inline [PMID] citations.
 """
+import json
 import time
 import urllib.parse
 import urllib.request
-from typing import Iterable, Optional
+from pathlib import Path
+from typing import Iterable, Optional, Union
 
 from . import config, db, parse_pubmed
 from .generate import _load_mlx, _validate_citations, cited_pmids
@@ -15,7 +17,8 @@ from .generate import _load_mlx, _validate_citations, cited_pmids
 SYSTEM = (
     "You are a careful biomedical evidence synthesizer. Summarize ONLY the provided "
     "PubMed abstracts. Cite every factual claim inline as [PMID]. Do not invent "
-    "details not present in the abstracts. If the set is heterogeneous, summarize "
+    "details not present in the abstracts. Use cautious language for observational, retrospective, "
+    "case-control, mechanistic, animal, or cell-line evidence; do not imply causality or clinical benefit unless randomized trial evidence supports it. If the set is heterogeneous, summarize "
     "themes and disagreements rather than forcing a single conclusion."
 )
 
@@ -145,10 +148,13 @@ def _build_prompt(papers: list[dict], tokenizer, topic: Optional[str] = None,
         f"- In 'Paper-specific findings', write EXACTLY {n_papers} bullets total: one bullet for each PMID in this checklist and no extra bullets: {pmid_list}.\n"
         "- Each paper-specific bullet must name the paper or topic, state the specific result/finding from the abstract/evidence note, and cite that PMID exactly once.\n"
         "- Do not repeat a PMID in multiple paper-specific bullets. Do not create bullets for imagined subtopics or repeated variants of the same paper.\n"
-        "- In 'Cross-paper synthesis', compare the paper-specific findings; do not merely repeat the bullets.\n"
+        "- In 'Cross-paper synthesis', write 1-3 concise paragraphs comparing patterns across papers; do not list every PMID again and do not merely repeat the bullets.\n"
         "- Distinguish human clinical evidence from mechanistic, animal, or cell-line evidence.\n"
         "- Describe study design, population/cancer type/model, endpoint, and direction of effect when the abstract provides them.\n"
         "- Do not call evidence high quality unless the abstract supports that; prefer precise descriptions such as randomized trial, cohort, retrospective study, systematic review, or cell-line study.\n"
+        "- For observational associations, say associated with rather than proves/causes/reduces, and mention possible residual confounding.\n"
+        "- Do not infer patient-level clinical benefit from mechanistic, animal, or cell-line studies alone.\n"
+        "- In 'Agreements and conflicts', summarize only the main agreements/conflicts in 3-6 bullets; do not repeat every paper-specific bullet.\n"
         "- Mention whether the evidence set is narrow, indirect, conflicting, or insufficient.\n"
         "- Keep the summary grounded only in the provided abstracts."
     )
@@ -181,9 +187,10 @@ def _paper_note_prompt(paper: dict, tokenizer, topic: Optional[str] = None) -> s
     user = (
         f"{topic_line}"
         f"Paper:\n{_paper_block(paper)}\n\n"
-        "Write one compact evidence note for this paper only. Include: study design if stated, "
-        "population/cancer/model, endpoint, main result and direction of effect, and any limitation. "
-        f"Use 2-4 sentences and cite only [{paper['pmid']}]."
+        "Write one compact evidence note for this paper only using exactly these labeled fields: "
+        "Design, Population/model, Endpoint, Main result, Limitations. "
+        "Use terse phrases or 1 sentence per field. Do not add extra fields. "
+        f"Cite only [{paper['pmid']}]."
     )
     messages = [
         {"role": "system", "content": SYSTEM},
@@ -218,8 +225,31 @@ def paper_evidence_notes(papers: list[dict], topic: Optional[str] = None,
     return notes
 
 
+def write_evidence_notes_json(path: Union[str, Path], papers: list[dict], notes: dict[int, str],
+                              topic: Optional[str] = None) -> None:
+    """Write map-stage evidence notes for inspection/debugging."""
+    by_pmid = {int(p["pmid"]): p for p in papers}
+    payload = {
+        "topic": topic,
+        "paper_count": len(papers),
+        "notes": [
+            {
+                "pmid": pmid,
+                "title": by_pmid.get(pmid, {}).get("title"),
+                "year": by_pmid.get(pmid, {}).get("year"),
+                "journal": by_pmid.get(pmid, {}).get("journal"),
+                "pubtypes": by_pmid.get(pmid, {}).get("pubtypes"),
+                "note": note,
+            }
+            for pmid, note in notes.items()
+        ],
+    }
+    Path(path).write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n")
+
+
 def summarize_papers(papers: list[dict], topic: Optional[str] = None, markdown: bool = True,
-                     map_reduce: bool = False, map_reduce_threshold: int = 12) -> str:
+                     map_reduce: bool = False, map_reduce_threshold: int = 12,
+                     notes_out: Optional[Union[str, Path]] = None) -> str:
     """Generate an overall cited summary for already-loaded paper dicts.
 
     For larger paper sets, map-reduce first creates one evidence note per paper,
@@ -233,8 +263,11 @@ def summarize_papers(papers: list[dict], topic: Optional[str] = None, markdown: 
 
     model, tokenizer = _load_mlx()
     context_text = None
+    notes = None
     if map_reduce or len(papers) >= map_reduce_threshold:
         notes = paper_evidence_notes(papers, topic=topic)
+        if notes_out:
+            write_evidence_notes_json(notes_out, papers, notes, topic=topic)
         context_text = _notes_context(papers, notes)
 
     prompt = _build_prompt(papers, tokenizer, topic=topic, markdown=markdown,
@@ -246,12 +279,14 @@ def summarize_papers(papers: list[dict], topic: Optional[str] = None, markdown: 
 def summarize_pmids(pmids: Iterable[int], topic: Optional[str] = None,
                     fetch_missing: bool = True, require_abstract: bool = False,
                     markdown: bool = True, map_reduce: bool = False,
-                    map_reduce_threshold: int = 12) -> tuple[str, list[dict]]:
+                    map_reduce_threshold: int = 12,
+                    notes_out: Optional[Union[str, Path]] = None) -> tuple[str, list[dict]]:
     """Load PMIDs, summarize them, and return (summary, papers_used)."""
     papers = load_papers(pmids, fetch_missing=fetch_missing, require_abstract=require_abstract)
     return summarize_papers(papers, topic=topic, markdown=markdown,
                             map_reduce=map_reduce,
-                            map_reduce_threshold=map_reduce_threshold), papers
+                            map_reduce_threshold=map_reduce_threshold,
+                            notes_out=notes_out), papers
 
 
 def cited_pmids_from_text(text: str) -> list[int]:

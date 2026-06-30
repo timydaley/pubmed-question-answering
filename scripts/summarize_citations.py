@@ -77,6 +77,7 @@ def main():
     ap.add_argument("--map-reduce-threshold", type=int, default=12,
                     help="automatically use map-reduce when paper count is at least this value")
     ap.add_argument("--out", type=Path)
+    ap.add_argument("--notes-out", type=Path, help="write map-reduce per-paper evidence notes to JSON")
     args = ap.parse_args()
 
     pmids = list(args.pmids)
@@ -101,6 +102,7 @@ def main():
         markdown=not args.plain_text,
         map_reduce=args.map_reduce,
         map_reduce_threshold=args.map_reduce_threshold,
+        notes_out=args.notes_out,
     )
     print(f"Loaded {len(papers)} papers", file=sys.stderr)
 
