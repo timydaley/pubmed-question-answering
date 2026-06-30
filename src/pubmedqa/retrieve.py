@@ -5,6 +5,7 @@ after a relevance gate, so a famous-but-off-topic paper can't surface (plan §5E
 """
 import math
 import re
+from datetime import datetime
 from difflib import SequenceMatcher
 from functools import lru_cache
 from . import config, db, embed, vectorstore
@@ -278,8 +279,40 @@ def _rrf(rank_lists, k=config.RRF_K):
     return scores
 
 
-def _impact_norm(cit):
-    """Map impact to 0..1. RCR (field-normalized) preferred; else log citations."""
+def _paper_age_years(paper):
+    year = paper.get("year")
+    try:
+        year = int(year)
+    except Exception:
+        return None
+    current = datetime.now().year
+    if year < 1800 or year > current + 1:
+        return None
+    return max(0.5, current - year + 1)
+
+
+def _recency_norm(paper):
+    """Map publication recency to 0..1, with recent papers protected from zero-citation bias."""
+    age = _paper_age_years(paper)
+    if age is None:
+        return config.IMPACT_FLOOR
+    return max(config.IMPACT_FLOOR, min(1.0, math.exp(-age / config.RECENCY_HALF_LIFE_YEARS)))
+
+
+def _citation_rate_norm(cit, paper):
+    """Age-adjusted citation signal so recent papers are not unfairly penalized."""
+    if not cit or cit.get("citation_count") is None:
+        return config.IMPACT_FLOOR
+    age = _paper_age_years(paper) or 1.0
+    rate = max(0.0, float(cit.get("citation_count") or 0)) / age
+    return max(
+        config.IMPACT_FLOOR,
+        min(1.0, math.log1p(rate) / math.log1p(config.CITATION_RATE_TARGET_PER_YEAR)),
+    )
+
+
+def _rcr_or_citation_norm(cit):
+    """Map raw impact to 0..1. RCR preferred; else log citation count."""
     if not cit:
         return config.IMPACT_FLOOR
     rcr = cit.get("rcr")
@@ -289,6 +322,26 @@ def _impact_norm(cit):
     if c is not None:
         return max(config.IMPACT_FLOOR, min(1.0, math.log1p(c) / math.log1p(1000)))
     return config.IMPACT_FLOOR
+
+
+def _impact_norm(cit, paper=None):
+    """Citation+recency impact score in 0..1.
+
+    Combines field-normalized impact (RCR when available), citation velocity, and
+    publication recency. This preserves the v1 principle that impact is only a
+    bounded secondary booster while avoiding a hard bias against recent papers
+    that have not had time to accumulate citations.
+    """
+    paper = paper or {}
+    base = _rcr_or_citation_norm(cit)
+    rate = _citation_rate_norm(cit, paper)
+    recency = _recency_norm(paper)
+    score = (
+        config.IMPACT_RCR_WEIGHT * base
+        + config.IMPACT_CITATION_RATE_WEIGHT * rate
+        + config.IMPACT_RECENCY_WEIGHT * recency
+    )
+    return max(config.IMPACT_FLOOR, min(1.0, score))
 
 
 def _evidence_text(paper):
@@ -439,7 +492,7 @@ def search(con, question, top_n=config.TOP_N_CONTEXT):
         pub_boost = _evidence_type_boost(_evidence_text(p), clinical_query=clinical_query)
         final = rel if rel < config.RELEVANCE_GATE else (
             rel
-            + config.ALPHA * _impact_norm(cits.get(pmid))
+            + config.ALPHA * _impact_norm(cits.get(pmid), p)
             + (overlap * config.QUERY_OVERLAP_BONUS)
             + (focus_overlap * config.KEYWORD_FILTER_BONUS)
             + (entity_overlap * config.KEYWORD_FILTER_BONUS * 2.0)
@@ -460,6 +513,9 @@ def search(con, question, top_n=config.TOP_N_CONTEXT):
         deduped.append({**p, "pmid": pmid, "score": final, "relevance": rel,
                         "overlap": overlap, "focus_overlap": focus_overlap,
                         "pub_boost": pub_boost,
+                        "impact_score": _impact_norm(c, p),
+                        "recency_score": _recency_norm(p),
+                        "citation_rate_score": _citation_rate_norm(c, p),
                         "citation_count": c.get("citation_count"), "rcr": c.get("rcr")})
         candidate_pool = top_n * 4 if clinical_query else top_n * 2
         if len(deduped) >= candidate_pool:
