@@ -1,0 +1,16 @@
+# Original starter benchmark
+does metformin reduce cancer risk?
+statins and risk of dementia
+vitamin D supplementation and respiratory infections
+aspirin for primary prevention cardiovascular disease
+GLP-1 agonists and cardiovascular outcomes
+
+# Expanded clinical and mechanistic benchmark
+beta blockers and mortality in heart failure
+SGLT2 inhibitors kidney outcomes
+omega-3 supplementation cardiovascular prevention
+exercise and insulin sensitivity
+ketogenic diet epilepsy adults
+does aspirin reduce colorectal cancer risk?
+mechanism of metformin AMPK activation
+p53 mutation and cancer prognosis

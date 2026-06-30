@@ -26,6 +26,7 @@ import sys
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Optional
 
 import numpy as np
 
@@ -69,12 +70,29 @@ def reset_outputs():
         shutil.rmtree(config.LANCE_DIR)
 
 
+def _coerce_year(value):
+    """Extract a publication year from NCBI metadata fields.
+
+    NCBI's precomputed `pubmed_chunk_*.json` currently uses `d` for a date like
+    YYYYMMDD. Some alternate exports use `y`/`year`. Keep this parser tolerant so
+    snapshot builds preserve year metadata whenever any date-like field exists.
+    """
+    if value is None:
+        return None
+    text = str(value).strip()
+    if len(text) >= 4 and text[:4].isdigit():
+        year = int(text[:4])
+        if 1800 <= year <= 2200:
+            return year
+    return None
+
+
 def _text_record(raw, pmid):
     if isinstance(raw, dict):
         title = raw.get("t") or raw.get("title") or ""
         abstract = raw.get("a") or raw.get("abstract") or ""
         journal = raw.get("j") or raw.get("journal") or ""
-        year = raw.get("y") or raw.get("year")
+        year = raw.get("y") or raw.get("year") or raw.get("d") or raw.get("date")
         pubtypes = raw.get("pt") or raw.get("pubtypes") or raw.get("p") or ""
         mesh = raw.get("m") or raw.get("mesh") or ""
         retracted = raw.get("retracted") or 0
@@ -82,10 +100,7 @@ def _text_record(raw, pmid):
         title = abstract = journal = pubtypes = mesh = ""
         year = None
         retracted = 0
-    try:
-        year = int(year) if year is not None and str(year).isdigit() else None
-    except Exception:
-        year = None
+    year = _coerce_year(year)
     return {
         "pmid": int(pmid),
         "title": title,
@@ -115,7 +130,7 @@ def _load_text_map(path: Path):
     raise ValueError(f"Unsupported JSON structure in {path}")
 
 
-def load_chunk(n: int, rows: int | None = None):
+def load_chunk(n: int, rows: Optional[int] = None):
     embeds = np.load(NCBI_DIR / f"embeds_chunk_{n}.npy", mmap_mode="r")
     pmids = [int(p) for p in json.load(open(NCBI_DIR / f"pmids_chunk_{n}.json"))]
     text_map = _load_text_map(NCBI_DIR / f"pubmed_chunk_{n}.json")

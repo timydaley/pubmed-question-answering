@@ -7,7 +7,7 @@ for the full design and rationale.
 
 **Stack (v1 — fast & lean):** MedCPT embeddings · LanceDB (vectors) · SQLite + FTS5
 (BM25, text, citations) · RRF hybrid retrieval · bounded citation/evidence boost ·
-Ollama 8B. No servers; cross-encoder rerank deferred to a later phase.
+MLX local LLM on Apple Silicon. No servers; cross-encoder rerank deferred to a later phase.
 
 ---
 
@@ -20,9 +20,10 @@ else is intended to stay aligned with the production path — plan §4.)
 
 ### 0. Prerequisites
 - Python 3.11+
-- [Ollama](https://ollama.com) running, with the model pulled:
+- Apple Silicon Mac (for MLX)
+- Set the local model to use with MLX if you want to override the default:
   ```bash
-  ollama pull llama3.1:8b
+  export PUBMEDQA_LLM=mlx-community/Llama-3.1-8B-Instruct-4bit
   ```
 - Point storage at your external SSD:
   ```bash
@@ -51,7 +52,13 @@ size the daily-delta path; the bulk corpus is downloaded, not embedded locally).
 ### 4. Ask
 ```bash
 python scripts/p0_ask.py "does metformin reduce cancer risk?"
-python scripts/p0_ask.py --no-llm "statins and dementia"   # retrieval only, no LLM
+python scripts/p0_ask.py --no-llm "statins and dementia"                # retrieval only, no LLM
+python scripts/p0_ask.py --no-llm --show-groups "statins and dementia"  # inspect balanced context groups
+python scripts/p0_ask.py --top 20 --second-pass-summary --summary-source retrieved --map-reduce \
+  --summary-notes-out p53_notes.json \
+  "p53 mutation and cancer prognosis"                                   # deeper evidence synthesis
+python scripts/p0_ask.py --second-pass-summary --summary-source cited --max-cited-summary-papers 5 \
+  "does metformin reduce cancer risk?"                                  # selective cited-paper synthesis
 ```
 
 ### Phase 0 success criteria (from the plan)
@@ -81,6 +88,15 @@ Pin `MEDCPT_REVISION` in `config.py` so the full build matches what you verified
 (`pubmed_chunk_{i}.json` also holds the title/abstract text — handy to populate SQLite at
 full-build time instead of parsing baseline XML.)
 
+### Download more precomputed embedding chunks
+Use this helper to fetch multiple NCBI MedCPT chunks ahead of time:
+
+```bash
+python scripts/download_precomputed_embeddings.py --list
+python scripts/download_precomputed_embeddings.py --chunks 0 1 2
+python scripts/download_precomputed_embeddings.py --range 0 5 --with-text
+```
+
 ### Snapshot build from precomputed embeddings
 This is the production-aligned ingest path for v1:
 
@@ -107,16 +123,32 @@ src/pubmedqa/
   vectorstore.py   LanceDB (cosine; IVF-PQ at scale)
   citations.py     iCite citation_count + RCR
   retrieve.py      BM25 + dense -> RRF -> bounded citation re-score
-  generate.py      Ollama answer + [PMID] citation validation
+  generate.py      MLX answer + [PMID] citation validation
+  summarize.py     second-pass cited/retrieved-paper synthesis
 scripts/
   p0_download_sample.py  p0_build_index.py  p0_ask.py
-  p0b_verify_precomputed.py  build_snapshot_from_precomputed.py
+  p0b_verify_precomputed.py  download_precomputed_embeddings.py
+  build_snapshot_from_precomputed.py  evaluate_retrieval.py
+  summarize_citations.py  judge_retrieval.py  compare_eval.py
 ```
 
+### Small retrieval benchmark
+
+The current frozen v4 baseline is documented in [`paper/pubmedqa_v4_baseline_icml2026.pdf`](paper/pubmedqa_v4_baseline_icml2026.pdf) with source in [`paper/pubmedqa_v4_baseline_icml2026.tex`](paper/pubmedqa_v4_baseline_icml2026.tex).
+
+Capture a repeatable baseline before tuning retrieval thresholds:
+
+```bash
+python scripts/evaluate_retrieval.py --print-titles --out baseline_retrieval.json
+python scripts/evaluate_retrieval.py --with-llm --out baseline_with_answers.json
+```
+
+Use `--questions my_questions.txt` to provide one question per line.
+
 ## Config knobs (`src/pubmedqa/config.py`)
-`PUBMEDQA_DATA` (SSD path) · `PUBMEDQA_LLM` (default `llama3.1:8b`) · `ALPHA` (bounded
-citation/evidence weight) · `IMPACT_FLOOR` (cold-start) · `USE_CROSS_ENCODER` (off in v1) ·
-`MEDCPT_REVISION`.
+`PUBMEDQA_DATA` (SSD path) · `PUBMEDQA_LLM` (default `mlx-community/Llama-3.1-8B-Instruct-4bit`) ·
+`PUBMEDQA_LLM_MAX_TOKENS` · `ALPHA` (bounded citation/evidence weight) · `IMPACT_FLOOR`
+(cold-start) · `USE_CROSS_ENCODER` (off in v1) · `MEDCPT_REVISION`.
 
 ## License
 [MIT](LICENSE).

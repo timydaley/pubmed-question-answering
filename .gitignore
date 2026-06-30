@@ -12,3 +12,26 @@ pubmedqa_data/
 *.sqlite-*
 lancedb/
 *.xml.gz
+
+# Evaluation artifacts: keep current frozen v4 baselines, ignore older/smoke runs.
+baseline_retrieval*.json
+!baseline_retrieval_v4.json
+!baseline_retrieval_expanded_v2.json
+!baseline_retrieval_expanded_entityfix_v1.json
+baseline_with_answers*.json
+!baseline_with_answers_v4.json
+!baseline_with_answers_expanded_entityfix_v1.json
+judged_retrieval*.json
+!judged_retrieval_qwen3_v4.json
+!judged_retrieval_qwen3_v4_strict.json
+!judged_retrieval_expanded_qwen3_strict_v2.json
+!judged_retrieval_expanded_entityfix_qwen3_strict_v1.json
+metformin_v4_pool_test.json
+vitamin_d_phrase_test.json
+
+# LaTeX build byproducts; keep source and final PDF.
+paper/*.aux
+paper/*.bbl
+paper/*.blg
+paper/*.log
+paper/*.out

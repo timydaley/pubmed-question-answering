@@ -46,7 +46,7 @@ def build_index(table=config.LANCE_TABLE, num_partitions=256, num_sub_vectors=96
 
 def search(query_vec, topk, table=config.LANCE_TABLE, nprobes=20):
     tbl = _db().open_table(table)
-    q = tbl.search(list(query_vec)).metric("cosine").limit(topk).select(["pmid"])
+    q = tbl.search(list(query_vec)).metric("cosine").limit(topk).select(["pmid", "_distance"])
     try:
         q = q.nprobes(nprobes)   # only meaningful once an IVF index exists
     except Exception:
