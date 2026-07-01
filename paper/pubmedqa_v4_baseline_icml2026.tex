@@ -14,12 +14,12 @@
 \usepackage{algorithmic}
 \usepackage{url}
 
-\icmltitlerunning{PubMedQA v4 Retrieval Baseline}
+\icmltitlerunning{PubMedQA v1 Local Evidence Baseline}
 
 \begin{document}
 
 \twocolumn[
-\icmltitle{PubMedQA v4 Baseline: Local Evidence-Aware Biomedical Question Answering}
+\icmltitle{PubMedQA v1: Local Evidence-Aware Biomedical Question Answering over PubMed}
 
 \begin{icmlauthorlist}
 \icmlauthor{Timothy Daley}{pubmedqa}
@@ -36,12 +36,12 @@
 \printAffiliationsAndNotice{}
 
 \begin{abstract}
-This report freezes the PubMedQA v4 baseline: a local, evidence-aware biomedical question answering pipeline over a PubMed snapshot. The system combines MedCPT dense retrieval, SQLite FTS5 lexical retrieval, reciprocal-rank fusion, bounded citation/evidence scoring, duplicate suppression, clinical-query-aware context balancing, and local MLX generation with PMID citation validation. On five representative medical questions, v4 retrieves ten papers per query with no Qwen-judged irrelevant papers, improves the clinical/review evidence mix relative to v3, and produces grounded answers with zero invalid PMID citations. The tradeoff is higher retrieval latency: v4 averages 13.32 seconds versus 9.08 seconds for v3 on the same benchmark.
+This report updates the PubMedQA local baseline after the v1 retrieval, answer-generation, and release-gate work. The system combines MedCPT dense retrieval, SQLite FTS5 lexical retrieval, reciprocal-rank fusion, bounded evidence/citation/recency scoring, duplicate suppression, clinical-query-aware context balancing, local MLX generation, second-pass evidence summaries, and PMID citation validation. On a 13-question expanded benchmark, the current citation+recency retrieval baseline returns 130 papers with zero Qwen-judged irrelevant papers, 129/130 papers judged relevance $\geq 2$, and mean judged relevance 2.577/3. The regenerated answer benchmark includes an explicit Evidence basis section in all 13 answers and has zero invalid PMID citations or citation-extraction mismatches. We define v1 release gates covering build integrity, retrieval quality, answer quality, latency, and manual edge-case review.
 \end{abstract}
 
 \section{Purpose}
 
-The project goal is to answer biomedical questions using local PubMed evidence rather than web search or remote retrieval. The current snapshot stores PubMed metadata in SQLite with FTS5 and MedCPT article vectors in LanceDB. Query-time execution is designed to be offline except for optional evaluation-time PubMed fetching. This document records the v4 baseline before further tuning.
+The project goal is to answer biomedical questions using local PubMed evidence rather than web search or remote retrieval. A local snapshot stores PubMed metadata in SQLite with FTS5 and MedCPT article vectors in LanceDB. Query-time execution is designed to be offline except for optional enrichment and evaluation-time PubMed fetching. This document records the current v1-oriented baseline and supersedes the earlier five-question v4 report.
 
 \section{System}
 
@@ -49,124 +49,130 @@ Given a question, the system embeds the query with the MedCPT query encoder \cit
 \begin{equation}
   s_{final} = s_{rel} + \alpha I + B_{overlap} + B_{focus} + B_{evidence},
 \end{equation}
-where $s_{rel}$ is normalized fused relevance, $I$ is a bounded citation/RCR impact term from local citation rows when available \citep{icite}, and the remaining terms reward query overlap, LLM-extracted focus-keyword overlap, and evidence type. The final context is deduplicated by title similarity and balanced between clinical/review and mechanistic/other papers.
+where $s_{rel}$ is normalized fused relevance, $I$ is a bounded impact term derived from RCR, log citation count, citation rate, and recency when available \citep{icite}, and the remaining terms reward query overlap, LLM-extracted focus-keyword overlap, and evidence type. The final context is deduplicated by title similarity and balanced between clinical/review and mechanistic/other papers.
 
-Generation uses a local MLX language model \citep{mlx}. Answers are prompted to cite every factual claim with retrieved PMIDs. A citation validator scans the generated answer and reports any PMID not present in the retrieved context.
+Generation uses a local MLX language model \citep{mlx}. Answers are prompted to cite every factual claim with retrieved PMIDs, avoid causal language for observational/mechanistic evidence, distinguish endpoint classes, and include a concise \texttt{Evidence basis} section. A citation validator scans the generated answer and reports any PMID not present in the retrieved context.
 
-\section{v4 Retrieval Changes}
+The CLI now also supports optional second-pass evidence synthesis. Users can summarize either all retrieved papers or only cited papers, use direct or map-reduce summarization, and export per-paper evidence notes for debugging and factual review.
 
-Version v4 adds clinical-query-aware tuning. A query is classified as clinical/outcome-oriented by lexical triggers such as \texttt{risk}, \texttt{reduce}, \texttt{prevention}, \texttt{outcome}, \texttt{mortality}, \texttt{survival}, \texttt{supplementation}, \texttt{cardiovascular}, \texttt{dementia}, and \texttt{infection}. For such queries, evidence-type bonuses are doubled, mechanistic/cell-line terms receive a small penalty, final context quotas shift from 5 clinical / 5 mechanistic to 7 clinical / 3 mechanistic where enough clinical candidates exist, and the deduplicated candidate pool is expanded from $2N$ to $4N$ before balanced selection.
+\section{Recent Changes}
 
-The active v4 knobs are:
-\begin{align*}
-\texttt{CLINICAL\_QUERY\_EVIDENCE\_MULTIPLIER} &= 2.0,\\
-\texttt{CLINICAL\_QUERY\_MECH\_PENALTY} &= 0.06,\\
-\texttt{CLINICAL\_QUERY\_CLINICAL\_QUOTA} &= 7,\\
-\texttt{CLINICAL\_QUERY\_MECH\_QUOTA} &= 3.
-\end{align*}
+The current baseline includes five major changes since the earlier v4 paper.
+
+\paragraph{Citation and recency scoring.} Retrieval impact scoring now combines RCR/log citation count, citation velocity, and recency. This keeps highly cited established papers competitive while allowing recent papers to surface when citation velocity or recency is informative.
+
+\paragraph{Clinical context balancing.} Clinical/outcome-oriented questions prefer clinical/review evidence when enough candidates exist. The usual clinical query target is seven clinical/review papers and three mechanistic/other papers; mechanistic questions can still return fully mechanistic contexts.
+
+\paragraph{Answer prompt calibration.} The answer prompt now explicitly asks for an \texttt{Evidence basis} section and cautions against unqualified ``yes'' answers for observational associations. It instructs the model to distinguish incidence/prevention, survival after diagnosis, treatment response, surrogate outcomes, and mechanistic findings.
+
+\paragraph{Answer comparison tooling.} A new \texttt{scripts/compare\_answers.py} script compares answer artifacts, including latency, citation validity, citation-set changes, Evidence basis coverage, citation-status mismatches, and simple language review flags.
+
+\paragraph{Build integrity and release gates.} Snapshot builds now report duplicate PMIDs, LanceDB row counts, SQLite row counts, abstract/year/citation coverage, and integrity checks. The project now has explicit v1 release gates for build integrity, retrieval quality, answer quality, latency, and manual review.
 
 \section{Benchmark}
 
-We evaluate five representative questions:
-\begin{enumerate}
-  \item Does metformin reduce cancer risk?
-  \item Statins and risk of dementia.
-  \item Vitamin D supplementation and respiratory infections.
-  \item Aspirin for primary prevention cardiovascular disease.
-  \item GLP-1 agonists and cardiovascular outcomes.
-\end{enumerate}
+We use the expanded 13-question benchmark in \texttt{benchmarks/expanded\_questions.txt}. It covers drug safety/effectiveness, prevention, supplementation, cardiovascular and kidney outcomes, lifestyle interventions, mechanistic biology, and prognosis.
 
-The benchmark artifacts are \texttt{baseline\_retrieval\_v4.json}, \texttt{judged\_retrieval\_qwen3\_v4.json}, and \texttt{baseline\_with\_answers\_v4.json}. The judge is \texttt{mlx-community/Qwen3-4B-4bit}, run locally through MLX with a strict JSON rubric. The answer generator is the configured local MLX model, currently \texttt{mlx-community/Llama-3.1-8B-Instruct-4bit}.
+The current key artifacts are the citation+recency retrieval baseline, the strict Qwen judged retrieval baseline, the Evidence-basis answer baseline, the citation/recency review note, and the v1 release-gate checklist. Full artifact filenames are recorded in the repository and release notes.
+
+The retrieval judge is \texttt{mlx-community/Qwen3-4B-4bit}, run locally through MLX with a strict JSON rubric. The answer generator is the configured local MLX model.
 
 \section{Retrieval Results}
 
 \begin{table*}[t]
 \centering
-\caption{v4 retrieval baseline. Direct@10 is the number of papers Qwen judged as direct relevance 3/3. Rel@10 is the number judged at least 2/3.}
+\caption{Current citation+recency retrieval baseline on the expanded benchmark. Direct@10 is the number of papers Qwen judged relevance 3/3. Rel@10 is the number judged at least 2/3.}
 \label{tab:retrieval}
 \begin{tabular}{lrrrrr}
 \toprule
 Question & Retrieval (s) & Clinical & Mech. & Direct@10 & Rel@10 \\
 \midrule
-Metformin / cancer risk & 13.47 & 5 & 5 & 5 & 10 \\
-Statins / dementia & 6.61 & 7 & 3 & 10 & 10 \\
-Vitamin D / respiratory infections & 12.56 & 7 & 3 & 8 & 10 \\
-Aspirin / primary CVD prevention & 19.68 & 6 & 4 & 10 & 10 \\
-GLP-1 / cardiovascular outcomes & 14.26 & 7 & 3 & 10 & 10 \\
+Metformin / cancer risk & 14.56 & 7 & 3 & 2 & 10 \\
+Statins / dementia & 6.37 & 7 & 3 & 8 & 10 \\
+Vitamin D / respiratory infections & 12.80 & 7 & 3 & 4 & 10 \\
+Aspirin / primary CVD prevention & 20.54 & 7 & 3 & 7 & 10 \\
+GLP-1 / cardiovascular outcomes & 13.79 & 7 & 3 & 10 & 10 \\
+Beta blockers / heart failure mortality & 13.75 & 7 & 3 & 9 & 10 \\
+SGLT2 inhibitors / kidney outcomes & 13.24 & 7 & 3 & 8 & 9 \\
+Omega-3 / cardiovascular prevention & 13.29 & 7 & 3 & 6 & 10 \\
+Exercise / insulin sensitivity & 13.64 & 5 & 5 & 3 & 10 \\
+Ketogenic diet / adult epilepsy & 11.56 & 5 & 5 & 3 & 10 \\
+Aspirin / colorectal cancer risk & 10.61 & 7 & 3 & 6 & 10 \\
+Metformin / AMPK mechanism & 14.80 & 0 & 10 & 2 & 10 \\
+p53 mutation / cancer prognosis & 12.98 & 2 & 8 & 8 & 10 \\
 \midrule
-Mean & 13.32 & 6.4 & 3.6 & 8.6 & 10.0 \\
+Mean / total & 13.22 & 5.8 & 4.2 & 76/130 & 129/130 \\
 \bottomrule
 \end{tabular}
 \end{table*}
 
-Table~\ref{tab:retrieval} shows that every retrieved paper was judged relevant at level 2 or higher. The weakest query remains metformin/cancer risk: many highly relevant records are mechanistic, disease-specific, or treatment/survival-oriented rather than direct general cancer-incidence evidence. However, v4 improves that query's direct relevance count from 4/10 in the prior Qwen run to 5/10, while preserving relevance for all ten papers.
-
-\begin{table}[t]
-\centering
-\caption{Retrieval latency comparison between v3 and v4.}
-\label{tab:latency}
-\begin{tabular}{lrrr}
-\toprule
-Question & v3 (s) & v4 (s) & Delta (s) \\
-\midrule
-Metformin & 8.60 & 13.47 & +4.86 \\
-Statins & 3.35 & 6.61 & +3.26 \\
-Vitamin D & 8.93 & 12.56 & +3.63 \\
-Aspirin & 15.01 & 19.68 & +4.67 \\
-GLP-1 & 9.51 & 14.26 & +4.75 \\
-\midrule
-Mean & 9.08 & 13.32 & +4.24 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-The latency cost in Table~\ref{tab:latency} is mainly due to expanding the clinical-query candidate pool before deduplication and balanced selection. We accept this tradeoff for v4 because it produces a better clinical evidence mix while remaining interactive on the target laptop.
+Table~\ref{tab:retrieval} shows that the current retrieval baseline has no judged irrelevant papers in the top ten across the benchmark. Average mean judge relevance is 2.577/3. Compared with the previous entity-fix baseline, citation+recency scoring changed top-10 membership for only 4/13 questions, preserved an average PMID-set Jaccard overlap of 0.909, increased total Direct@10 papers from 75 to 76, and kept Rel@10 at 129/130. The principal cost is latency: average retrieval time increased from 11.26s to 13.22s in the judged runs.
 
 \section{Answer Generation Results}
 
 \begin{table*}[t]
 \centering
-\caption{v4 end-to-end answer baseline. Citation validation checks whether generated PMIDs are in the retrieved context.}
+\caption{Current answer baseline with the Evidence basis prompt. Citation validation checks whether generated PMIDs are in the retrieved context.}
 \label{tab:answers}
-\begin{tabular}{lrrrl}
+\begin{tabular}{lrrrr}
 \toprule
 Question & Retrieval (s) & Generation (s) & Cited PMIDs & Invalid citations \\
 \midrule
-Metformin / cancer risk & 13.49 & 6.97 & 3 & 0 \\
-Statins / dementia & 5.26 & 9.95 & 6 & 0 \\
-Vitamin D / respiratory infections & 12.02 & 7.49 & 4 & 0 \\
-Aspirin / primary CVD prevention & 18.37 & 7.76 & 4 & 0 \\
-GLP-1 / cardiovascular outcomes & 13.29 & 8.63 & 5 & 0 \\
+Metformin / cancer risk & 15.00 & 10.05 & 4 & 0 \\
+Statins / dementia & 6.89 & 8.89 & 3 & 0 \\
+Vitamin D / respiratory infections & 14.84 & 8.80 & 5 & 0 \\
+Aspirin / primary CVD prevention & 23.70 & 6.61 & 5 & 0 \\
+GLP-1 / cardiovascular outcomes & 16.17 & 9.84 & 4 & 0 \\
+Beta blockers / heart failure mortality & 15.89 & 8.22 & 3 & 0 \\
+SGLT2 inhibitors / kidney outcomes & 14.73 & 9.65 & 4 & 0 \\
+Omega-3 / cardiovascular prevention & 13.81 & 9.22 & 3 & 0 \\
+Exercise / insulin sensitivity & 12.83 & 10.77 & 5 & 0 \\
+Ketogenic diet / adult epilepsy & 10.90 & 7.99 & 4 & 0 \\
+Aspirin / colorectal cancer risk & 12.25 & 11.29 & 5 & 0 \\
+Metformin / AMPK mechanism & 15.36 & 10.71 & 4 & 0 \\
+p53 mutation / cancer prognosis & 14.08 & 11.14 & 4 & 0 \\
 \midrule
-Mean & 12.49 & 8.16 & 4.4 & 0 \\
+Mean & 14.34 & 9.47 & 4.1 & 0 \\
 \bottomrule
 \end{tabular}
 \end{table*}
 
-As shown in Table~\ref{tab:answers}, v4 answer generation produced no invalid PMID citations across the five benchmark answers. Retrieval time in the answer baseline differs slightly from the retrieval-only run because it was executed in a separate process. The generated answer previews were qualitatively plausible, but manual scientific review is still required before treating any answer as authoritative.
+The regenerated answer benchmark fixed the main prompt-structure gap. Relative to the previous prompt-fix artifact, Evidence basis coverage improved from 0/13 to 13/13. Citation validation remained clean: zero citation warnings, zero invalid cited-PMID rows, and zero manual citation extraction mismatches. Simple review flags in \texttt{compare\_answers.py} dropped from 13 rows to 0 rows because the missing Evidence basis issue was resolved.
 
 \section{Known Limitations}
 
-First, the local snapshot currently has incomplete metadata for some rows: years, journals, publication types, citation counts, and RCR are often missing. To compensate, v4 infers evidence type from titles, but restoring richer PubMed metadata would improve both ranking and reporting. Second, the Qwen judge is useful for repeatable regression checks but is not a substitute for expert relevance assessment. Third, the current clinical-query classifier is lexical and may over-trigger for broad biological questions. Fourth, the system retrieves abstracts and metadata; full-text evidence is only available during optional evaluation when open-access content can be fetched.
+First, the local judge is useful for repeatable regression checks but is not a substitute for expert biomedical review. It can be generous for reviews, editorials, and indirect evidence. Second, some clinical questions still retrieve endpoint-mismatched papers, such as survival-after-diagnosis papers for prevention/incidence questions. Third, population constraints require more tuning: for example, adult epilepsy queries can still surface pediatric ketogenic diet papers. Fourth, citation and recency features are useful but not sufficient; stale mechanistic papers can still enter clinical contexts when lexical/vector similarity is high. Fifth, the system retrieves abstracts and metadata, not full text.
 
 \section{Reproduction Commands}
 
-The v4 artifacts were produced with:
+The current artifacts were produced with the following command pattern, using the expanded benchmark question file and the artifact names listed in the repository:
+\begin{footnotesize}
 \begin{verbatim}
-export PUBMEDQA_DATA="/Volumes/Macintosh HD/Users/timothydaley/Documents/pubmed_qa"
-./.venv/bin/python scripts/evaluate_retrieval.py \
-  --print-titles --out baseline_retrieval_v4.json
-./.venv/bin/python scripts/judge_retrieval.py \
-  --provider mlx --model mlx-community/Qwen3-4B-4bit \
-  --input baseline_retrieval_v4.json \
-  --out judged_retrieval_qwen3_v4.json --fetch-pubmed
-./.venv/bin/python scripts/evaluate_retrieval.py \
-  --with-llm --out baseline_with_answers_v4.json
+export PUBMEDQA_DATA="/path/to/pubmed_qa"
+
+python eval.py --questions expanded.txt \
+  --out RETRIEVAL_JSON --print-titles
+
+python judge.py --input RETRIEVAL_JSON \
+  --out JUDGED_JSON --provider mlx \
+  --model QWEN3_4B_4BIT
+
+python eval.py --questions expanded.txt \
+  --with-llm --out ANSWERS_JSON
+
+python compare_answers.py OLD NEW
 \end{verbatim}
+\end{footnotesize}
+
+\section{v1 Release Gates}
+
+The v1 release gates require: build-integrity checks to pass or have documented non-blocking warnings; 13/13 benchmark questions returning ten results; no judged irrelevant top-10 papers or a documented exception; at least 125/130 papers judged relevance $\geq 2$; average mean judge relevance at least 2.50; 13/13 answers with an Evidence basis section; zero invalid citations; average retrieval latency below 20s; average answer generation latency below 15s; and manual review of known edge cases including metformin/cancer, aspirin/CRC, aspirin primary prevention, exercise/insulin sensitivity, and p53/prognosis.
+
+The current baseline passes the measured retrieval, answer, and latency gates. Remaining work before tagging v1 is primarily manual review plus targeted fixes for endpoint, population, and stale-mechanistic retrieval issues.
 
 \section{Next Steps}
 
-The next engineering steps are to restore or enrich metadata for years, publication types, journals, and citation metrics; add a compact evaluation comparison script; tighten the judge rubric so broad reviews and indirect disease-specific evidence are separated more clearly; and test more non-metformin clinical and mechanistic questions before changing v4 thresholds.
+Near-term work should be targeted rather than broad enrichment: verify the improved build-integrity report on a fresh small snapshot; add a stale-mechanistic penalty for clinical outcome questions; improve population/age filtering; strengthen endpoint matching for prevention versus post-diagnosis survival; and use the v1 release gates as the decision checklist for freezing the first release.
 
 \bibliography{pubmedqa_v4_baseline_icml2026}
 \bibliographystyle{icml2026}
