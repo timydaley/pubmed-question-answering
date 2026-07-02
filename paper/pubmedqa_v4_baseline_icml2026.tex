@@ -41,7 +41,7 @@ This report updates the PubMedQA local baseline after the v1 retrieval, answer-g
 
 \section{Purpose}
 
-The project goal is to answer biomedical questions using local PubMed evidence rather than web search or remote retrieval. A local snapshot stores PubMed metadata in SQLite with FTS5 and MedCPT article vectors in LanceDB. Query-time execution is designed to be offline except for optional enrichment and evaluation-time PubMed fetching. This document records the current v1-oriented baseline and supersedes the earlier five-question v4 report.
+The project goal is to answer biomedical questions using local PubMed evidence rather than web search or remote retrieval. Here \textit{PubMedQA} refers to this local project, not an evaluation on the canonical PubMedQA dataset. A local snapshot stores PubMed metadata in SQLite with FTS5 and MedCPT article vectors in LanceDB. Query-time execution is designed to be offline except for optional enrichment and evaluation-time PubMed fetching. This document records the current v1-oriented baseline and supersedes the earlier five-question v4 report.
 
 \section{System}
 
@@ -73,7 +73,7 @@ The current baseline includes five major changes since the earlier v4 paper.
 
 We use the expanded 13-question benchmark in \texttt{benchmarks/expanded\_questions.txt}. It covers drug safety/effectiveness, prevention, supplementation, cardiovascular and kidney outcomes, lifestyle interventions, mechanistic biology, and prognosis.
 
-The current key artifacts are the citation+recency retrieval baseline, the strict Qwen judged retrieval baseline, the Evidence-basis answer baseline, the citation/recency review note, and the v1 release-gate checklist. Full artifact filenames are recorded in the repository and release notes.
+The current key outputs are the citation+recency retrieval baseline, the strict Qwen judged retrieval baseline, the Evidence basis answer baseline, the citation/recency review note, and the v1 release-gate checklist. Aggregate comparison reports and artifact filenames are committed in the repository; raw JSON benchmark outputs are generated artifacts and may be regenerated with the commands below.
 
 The retrieval judge is \texttt{mlx-community/Qwen3-4B-4bit}, run locally through MLX with a strict JSON rubric. The answer generator is the configured local MLX model.
 
@@ -101,7 +101,7 @@ Aspirin / colorectal cancer risk & 10.61 & 7 & 3 & 6 & 10 \\
 Metformin / AMPK mechanism & 14.80 & 0 & 10 & 2 & 10 \\
 p53 mutation / cancer prognosis & 12.98 & 2 & 8 & 8 & 10 \\
 \midrule
-Mean / total & 13.22 & 5.8 & 4.2 & 76/130 & 129/130 \\
+Mean / aggregate & 13.22 & 5.8 & 4.2 & 76/130 & 129/130 \\
 \bottomrule
 \end{tabular}
 \end{table*}
@@ -137,7 +137,7 @@ Mean & 14.34 & 9.47 & 4.1 & 0 \\
 \end{tabular}
 \end{table*}
 
-The regenerated answer benchmark fixed the main prompt-structure gap. Relative to the previous prompt-fix artifact, Evidence basis coverage improved from 0/13 to 13/13. Citation validation remained clean: zero citation warnings, zero invalid cited-PMID rows, and zero manual citation extraction mismatches. Simple review flags in \texttt{compare\_answers.py} dropped from 13 rows to 0 rows because the missing Evidence basis issue was resolved.
+The regenerated answer benchmark fixed the main prompt-structure gap. Relative to the previous prompt-fix artifact, Evidence basis coverage improved from 0/13 to 13/13. Citation validation remained clean: zero citation warnings, zero invalid cited-PMID rows, and zero manual citation extraction mismatches. Simple review flags in \texttt{compare\_answers.py} dropped from 13 rows to 0 rows because the missing Evidence basis issue was resolved. Retrieval timings in Table~\ref{tab:answers} come from a separate end-to-end answer-generation run and therefore differ from the retrieval-only/judged run in Table~\ref{tab:retrieval}.
 
 \section{Known Limitations}
 
@@ -145,30 +145,35 @@ First, the local judge is useful for repeatable regression checks but is not a s
 
 \section{Reproduction Commands}
 
-The current artifacts were produced with the following command pattern, using the expanded benchmark question file and the artifact names listed in the repository:
-\begin{footnotesize}
+The current artifacts were produced with the following command pattern, using shortened shell variables to keep line lengths readable:
+\begin{scriptsize}
 \begin{verbatim}
 export PUBMEDQA_DATA="/path/to/pubmed_qa"
+Q=benchmarks/expanded_questions.txt
+RET=retrieval.json
+JUD=judged_retrieval.json
+ANS=answers.json
+OLD=previous_answers.json
 
-python eval.py --questions expanded.txt \
-  --out RETRIEVAL_JSON --print-titles
+./.venv/bin/python scripts/evaluate_retrieval.py \
+  --questions $Q --out $RET --print-titles
 
-python judge.py --input RETRIEVAL_JSON \
-  --out JUDGED_JSON --provider mlx \
-  --model QWEN3_4B_4BIT
+./.venv/bin/python scripts/judge_retrieval.py \
+  --input $RET --out $JUD --provider mlx \
+  --model mlx-community/Qwen3-4B-4bit
 
-python eval.py --questions expanded.txt \
-  --with-llm --out ANSWERS_JSON
+./.venv/bin/python scripts/evaluate_retrieval.py \
+  --questions $Q --with-llm --out $ANS
 
-python compare_answers.py OLD NEW
+python3 scripts/compare_answers.py $OLD $ANS
 \end{verbatim}
-\end{footnotesize}
+\end{scriptsize}
 
 \section{v1 Release Gates}
 
 The v1 release gates require: build-integrity checks to pass or have documented non-blocking warnings; 13/13 benchmark questions returning ten results; no judged irrelevant top-10 papers or a documented exception; at least 125/130 papers judged relevance $\geq 2$; average mean judge relevance at least 2.50; 13/13 answers with an Evidence basis section; zero invalid citations; average retrieval latency below 20s; average answer generation latency below 15s; and manual review of known edge cases including metformin/cancer, aspirin/CRC, aspirin primary prevention, exercise/insulin sensitivity, and p53/prognosis.
 
-The current baseline passes the measured retrieval, answer, and latency gates. Remaining work before tagging v1 is primarily manual review plus targeted fixes for endpoint, population, and stale-mechanistic retrieval issues.
+The current baseline passes the measured retrieval, answer, and latency gates. The updated build-integrity report still needs to be validated on a fresh snapshot build before all v1 gates can be considered complete. Remaining work before tagging v1 is primarily manual review plus targeted fixes for endpoint, population, and stale-mechanistic retrieval issues.
 
 \section{Next Steps}
 
