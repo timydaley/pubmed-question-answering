@@ -151,7 +151,7 @@ form.addEventListener('submit', async (e) => {{
       }})
     }});
     const contentType = res.headers.get('content-type') || '';
-    const data = contentType.includes('application/json') ? await res.json() : {detail: await res.text()};
+    const data = contentType.includes('application/json') ? await res.json() : {{detail: await res.text()}};
     if (!res.ok) throw new Error(data.detail || 'Request failed');
     const elapsed = ((performance.now() - t0) / 1000).toFixed(1);
     statusEl.textContent = `Done in ${{elapsed}}s. Retrieval ${{data.retrieval_seconds}}s, generation ${{data.generation_seconds ?? 'n/a'}}s.`;
