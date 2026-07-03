@@ -12,13 +12,17 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-from pubmedqa import db, retrieve, generate, summarize  # noqa: E402
+from pubmedqa import db, retrieve, generate, summarize, evidence_select  # noqa: E402
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("question", nargs="+")
-    ap.add_argument("--top", type=int, default=10)
+    ap.add_argument("--top", type=int, default=10, help="number of papers to show/use when not using evidence selection")
+    ap.add_argument("--retrieve-pool", type=int, help="retrieve this many candidates before evidence selection for LLM answers")
+    ap.add_argument("--evidence-context", type=int, default=8, help="number of selected evidence papers to pass to the LLM")
+    ap.add_argument("--no-evidence-select", action="store_true", help="pass raw retrieved papers to the LLM instead of curated evidence")
+    ap.add_argument("--show-selected", action="store_true", help="print selected evidence papers before answer generation")
     ap.add_argument("--no-llm", action="store_true", help="show retrieved papers only")
     ap.add_argument("--summary-only", action="store_true", help="hide retrieved-paper list and print only the summary")
     ap.add_argument("--per-paper-summaries", action="store_true", help="include a short note for each retrieved paper in the final summary")
@@ -34,29 +38,46 @@ def main():
     question = " ".join(args.question)
 
     con = db.connect()
+    retrieve_n = args.retrieve_pool or args.top
     t0 = time.time()
-    papers = retrieve.search(con, question, top_n=args.top)
+    papers = retrieve.search(con, question, top_n=retrieve_n)
     dt = time.time() - t0
     if not papers:
         print("No results — did you build the index? (scripts/p0_build_index.py)")
         return
 
     if not args.summary_only:
-        print(f"\n=== Top {len(papers)} papers ({dt:.2f}s retrieval) ===")
-        for p in papers:
+        shown = papers[:args.top]
+        print(f"\n=== Top {len(shown)} papers ({dt:.2f}s retrieval; pool={len(papers)}) ===")
+        for p in shown:
             group = f" group={p.get('context_group')}" if args.show_groups else ""
             print(f"[{p['pmid']}] score={p['score']:.3f} rcr={p.get('rcr')} "
                   f"cites={p.get('citation_count')} ({p.get('year')}){group} "
                   f"{(p.get('title') or '')[:90]}")
 
     answer_text = ""
+    answer_papers = papers[:args.top]
     if not args.no_llm:
+        if not args.no_evidence_select:
+            answer_papers = evidence_select.select_evidence(
+                question,
+                papers,
+                max_papers=args.evidence_context,
+            )
+        if args.show_selected and not args.summary_only:
+            print(f"\n=== Selected evidence ({len(answer_papers)} papers) ===")
+            for p in answer_papers:
+                sel = p.get("evidence_selection") or {}
+                print(f"[{p['pmid']}] sel={sel.get('score')} tier={sel.get('evidence_tier')} "
+                      f"exposure={sel.get('exposure_score')} endpoint={sel.get('endpoint_score')} "
+                      f"pop={sel.get('population_score')} "
+                      f"{(p.get('title') or '')[:90]}")
         if not args.summary_only:
             print("\n=== Summary (local MLX, grounded) ===")
         t_answer = time.time()
         answer_text = generate.answer(
             question,
-            papers,
+            answer_papers,
             per_paper=args.per_paper_summaries,
             markdown=not args.plain_text,
         )
@@ -71,7 +92,7 @@ def main():
         if not answer_text:
             raise SystemExit("--summary-source cited requires normal answer generation; omit --no-llm or use --summary-source retrieved")
         selected = set(summarize.cited_pmids_from_text(answer_text))
-        summary_papers = [p for p in papers if int(p["pmid"]) in selected]
+        summary_papers = [p for p in answer_papers if int(p["pmid"]) in selected]
         if args.max_cited_summary_papers is not None:
             if args.max_cited_summary_papers <= 0:
                 raise SystemExit("--max-cited-summary-papers must be positive")
@@ -79,7 +100,7 @@ def main():
         if not summary_papers:
             raise SystemExit("No cited retrieved PMIDs found for second-pass summary")
     else:
-        summary_papers = papers
+        summary_papers = answer_papers
 
     if not args.summary_only:
         pmids = ", ".join(str(p["pmid"]) for p in summary_papers)

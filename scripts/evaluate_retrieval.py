@@ -12,7 +12,7 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-from pubmedqa import db, generate, retrieve  # noqa: E402
+from pubmedqa import db, evidence_select, generate, retrieve  # noqa: E402
 
 DEFAULT_QUESTIONS = [
     "does metformin reduce cancer risk?",
@@ -48,7 +48,7 @@ def _citation_status(answer, pmids):
 
 
 def _paper_summary(p):
-    return {
+    row = {
         "pmid": p.get("pmid"),
         "title": p.get("title"),
         "year": p.get("year"),
@@ -63,12 +63,18 @@ def _paper_summary(p):
         "pubtypes": p.get("pubtypes"),
         "context_group": p.get("context_group"),
     }
+    if p.get("evidence_selection"):
+        row["evidence_selection"] = p.get("evidence_selection")
+    return row
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--questions", help="newline text or JSON file; defaults to starter benchmark questions")
-    ap.add_argument("--top", type=int, default=10)
+    ap.add_argument("--top", type=int, default=10, help="number of retrieved papers to record in the benchmark")
+    ap.add_argument("--retrieve-pool", type=int, help="retrieve this many candidates before evidence selection for LLM answers")
+    ap.add_argument("--evidence-context", type=int, default=8, help="number of selected evidence papers to pass to the LLM")
+    ap.add_argument("--no-evidence-select", action="store_true", help="pass raw top papers to the LLM instead of curated evidence")
     ap.add_argument("--with-llm", action="store_true", help="also generate answers and validate cited PMIDs")
     ap.add_argument("--out", default="retrieval_eval.json", help="JSON output path")
     ap.add_argument("--print-titles", action="store_true", help="print retrieved titles for spot checks")
@@ -81,36 +87,53 @@ def main():
     con = db.connect()
     results = []
     for i, question in enumerate(questions, 1):
+        retrieve_n = args.retrieve_pool or args.top
         t0 = time.perf_counter()
-        papers = retrieve.search(con, question, top_n=args.top)
+        papers = retrieve.search(con, question, top_n=retrieve_n)
         retrieval_s = time.perf_counter() - t0
+        recorded_papers = papers[:args.top]
 
         answer = None
         generation_s = None
         citation_status = None
+        selected_papers = None
         if args.with_llm and papers:
+            if args.no_evidence_select:
+                answer_papers = recorded_papers
+            else:
+                answer_papers = evidence_select.select_evidence(
+                    question,
+                    papers,
+                    max_papers=args.evidence_context,
+                )
+                selected_papers = answer_papers
             g0 = time.perf_counter()
-            answer = generate.answer(question, papers)
+            answer = generate.answer(question, answer_papers)
             generation_s = time.perf_counter() - g0
-            citation_status = _citation_status(answer, [p["pmid"] for p in papers])
+            citation_status = _citation_status(answer, [p["pmid"] for p in answer_papers])
 
         group_counts = {}
-        for p in papers:
+        for p in recorded_papers:
             group = p.get("context_group", "unknown")
             group_counts[group] = group_counts.get(group, 0) + 1
 
         row = {
             "question": question,
             "top_n": args.top,
+            "retrieve_pool": retrieve_n,
+            "evidence_context": None if args.no_evidence_select or not args.with_llm else args.evidence_context,
             "retrieval_seconds": round(retrieval_s, 3),
             "generation_seconds": round(generation_s, 3) if generation_s is not None else None,
-            "num_results": len(papers),
-            "unique_journals": len({p.get("journal") for p in papers if p.get("journal")}),
-            "year_range": [min((p.get("year") for p in papers if p.get("year")), default=None),
-                           max((p.get("year") for p in papers if p.get("year")), default=None)],
+            "num_results": len(recorded_papers),
+            "num_retrieved_pool": len(papers),
+            "num_selected_evidence": len(selected_papers or []) if args.with_llm and not args.no_evidence_select else None,
+            "unique_journals": len({p.get("journal") for p in recorded_papers if p.get("journal")}),
+            "year_range": [min((p.get("year") for p in recorded_papers if p.get("year")), default=None),
+                           max((p.get("year") for p in recorded_papers if p.get("year")), default=None)],
             "context_group_counts": group_counts,
             "citation_status": citation_status,
-            "papers": [_paper_summary(p) for p in papers],
+            "papers": [_paper_summary(p) for p in recorded_papers],
+            "selected_evidence_papers": [_paper_summary(p) for p in (selected_papers or [])],
             "answer": answer,
             "manual_review": {
                 "retrieval_relevance_1_to_5": None,
@@ -120,9 +143,9 @@ def main():
         }
         results.append(row)
 
-        print(f"[{i}/{len(questions)}] {question} — {len(papers)} results, retrieval {retrieval_s:.2f}s, groups={group_counts}")
+        print(f"[{i}/{len(questions)}] {question} — {len(recorded_papers)} results (pool {len(papers)}), retrieval {retrieval_s:.2f}s, groups={group_counts}")
         if args.print_titles:
-            for p in papers:
+            for p in recorded_papers:
                 print(f"  [{p['pmid']}] {p.get('context_group')} {p.get('year')} {p.get('title')}")
 
     payload = {"created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "results": results}

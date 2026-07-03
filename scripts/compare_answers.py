@@ -70,7 +70,15 @@ def artifact_cited_pmids(row):
 
 
 def retrieved_pmids(row):
-    return {int(p["pmid"]) for p in row.get("papers", []) if p.get("pmid") is not None}
+    """PMIDs valid for answer citations.
+
+    Older artifacts cite from row['papers']. Evidence-selection artifacts generate
+    from row['selected_evidence_papers'], which can include candidates outside the
+    recorded top-10 retrieval list. Treat both as valid context.
+    """
+    out = {int(p["pmid"]) for p in row.get("papers", []) if p.get("pmid") is not None}
+    out.update(int(p["pmid"]) for p in row.get("selected_evidence_papers", []) if p.get("pmid") is not None)
+    return out
 
 
 def invalid_pmids(row):
