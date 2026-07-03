@@ -304,16 +304,86 @@ This should be fixed before treating the build report as authoritative for resum
 
 ### 1. Manual answer review
 
-Review evidence-selection v2 answers for:
+Targeted manual review has been completed and recorded in:
 
-- metformin/cancer risk;
-- omega-3/CVD prevention;
-- aspirin/CRC risk;
-- ketogenic diet adults;
-- exercise/insulin sensitivity;
-- p53 prognosis.
+```text
+evidence_selection_v2_manual_answer_review.md
+```
 
-Focus on whether evidence selection improves scientific behavior, not just citation validity.
+Verdict by target question:
+
+| Question | Verdict |
+|---|---|
+| metformin/cancer risk | Needs tuning |
+| omega-3/CVD prevention | Acceptable with minor caveat |
+| aspirin/CRC risk | Acceptable |
+| ketogenic diet adults | Needs tuning |
+| exercise/insulin sensitivity | Needs tuning |
+| p53 prognosis | Acceptable but broad |
+
+Follow-up tuning started in `src/pubmedqa/evidence_select.py`:
+
+- stronger penalty for survival/prognosis papers in risk/prevention questions;
+- additional penalty for treatment/therapy endpoints in risk/prevention questions when no prevention/risk framing is present;
+- stronger down-rank for animal/cell-line-only evidence in clinical outcome questions;
+- safety/adverse endpoint penalty for non-safety clinical questions;
+- missing required exposure/entity candidates are rejected instead of backfilled;
+- backfill now preserves the mechanistic evidence cap instead of reintroducing too many mechanistic papers.
+
+The tuning passed syntax/local selector smoke checks and a full 13-question answer benchmark was re-run.
+
+New artifacts:
+
+```text
+baseline_with_answers_full_allchunks_evidselect_tuned_v1.json
+compare_answers_evidselect_v2_to_tuned_v1.md
+```
+
+Aggregate tuned-v1 result versus evidence-selection v2:
+
+| Metric | Evidence selection v2 | Tuned v1 | Delta |
+|---|---:|---:|---:|
+| Questions | 13 | 13 | 0 |
+| Avg retrieval latency | 7.41s | 7.58s | +0.17s |
+| Avg generation latency | 10.99s | 9.76s | -1.23s |
+| Citation warning rows | 0 | 0 | 0 |
+| Invalid cited-PMID rows | 0 | 0 | 0 |
+| Manual citation extraction mismatches | 0 | 0 | 0 |
+| Rows with Evidence basis | 13 | 13 | 0 |
+| Rows with review flags | 1 | 1 | 0 |
+
+The GLP-1 benchmark caveat was fixed after the tuned-v1 run. Citation processing now:
+
+- normalizes retrieved bare/parenthesized PMIDs to bracket format, e.g. `(35546664)` -> `[35546664]`;
+- extracts `pmids_anywhere` in addition to bracketed `cited_pmids`;
+- records `unbracketed_pmids`, `invalid_pmids_anywhere`, `citation_format_warning`, and `citation_normalization_note` in benchmark artifacts;
+- reports invalid-PMID-anywhere, unbracketed-PMID, and normalization-note rows in answer comparisons.
+
+Citation-fix benchmark artifacts:
+
+```text
+baseline_with_answers_full_allchunks_evidselect_tuned_citationfix_v1.json
+compare_answers_tuned_v1_to_citationfix_v1.md
+compare_answers_evidselect_v2_to_tuned_citationfix_v1.md
+```
+
+Aggregate tuned+citationfix result versus evidence-selection v2:
+
+| Metric | Evidence selection v2 | Tuned + citation fix | Delta |
+|---|---:|---:|---:|
+| Questions | 13 | 13 | 0 |
+| Avg retrieval latency | 7.41s | 7.40s | -0.01s |
+| Avg generation latency | 10.99s | 9.60s | -1.39s |
+| Citation warning rows | 0 | 0 | 0 |
+| Invalid cited-PMID rows | 0 | 0 | 0 |
+| Invalid PMID-anywhere rows | 1 | 0 | -1 |
+| Unbracketed PMID rows | 1 | 0 | -1 |
+| Citation normalization note rows | 0 | 1 | +1 |
+| Manual citation extraction mismatches | 0 | 0 | 0 |
+| Rows with Evidence basis | 13 | 13 | 0 |
+| Rows with review flags | 1 | 1 | 0 |
+
+The one normalization note row is GLP-1: the model produced parenthesized PMIDs, and post-processing converted them to `[PMID]` citations with no invalid PMIDs.
 
 ### 2. Bulk iCite ingestion
 

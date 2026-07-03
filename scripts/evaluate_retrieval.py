@@ -39,11 +39,20 @@ def _load_questions(path):
 
 
 def _citation_status(answer, pmids):
-    cited = generate.cited_pmids(answer or "")
+    answer = answer or ""
+    valid_pmids = {int(p) for p in pmids}
+    cited = generate.cited_pmids(answer)
+    anywhere = generate.pmids_anywhere(answer)
+    unbracketed = generate.unbracketed_pmids(answer)
     return {
         "cited_pmids": sorted(cited),
-        "invalid_cited_pmids": sorted(cited - set(pmids)),
-        "citation_validation_warning": "[citation-validation] WARNING" in (answer or ""),
+        "pmids_anywhere": sorted(anywhere),
+        "unbracketed_pmids": sorted(unbracketed),
+        "invalid_cited_pmids": sorted(cited - valid_pmids),
+        "invalid_pmids_anywhere": sorted(anywhere - valid_pmids),
+        "citation_format_warning": bool(unbracketed),
+        "citation_validation_warning": "[citation-validation] WARNING" in answer,
+        "citation_normalization_note": "[citation-validation] NOTE" in answer,
     }
 
 

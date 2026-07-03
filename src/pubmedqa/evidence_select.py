@@ -39,7 +39,7 @@ def infer_intent(question):
         intents.add("prognosis_survival")
     if _has(q, "risk", "reduce", "prevention", "prevent", "incidence", "develop"):
         intents.add("risk_prevention")
-    if _has(q, "outcome", "outcomes", "mortality", "cardiovascular", "kidney", "renal", "heart failure"):
+    if _has(q, "outcome", "outcomes", "mortality", "cardiovascular", "kidney", "renal", "heart failure", "epilepsy", "seizure", "seizures", "efficacy", "effective"):
         intents.add("clinical_outcomes")
     if _has(q, "supplementation", "supplement"):
         intents.add("supplementation")
@@ -90,8 +90,11 @@ def endpoint_score(question, paper, intents=None):
         if _has(title, "risk", "incidence", "prevention", "prevent"):
             score += 1.0
         if _has(t, "survival", "after diagnosis", "post-diagnosis", "postdiagnosis", "prognos"):
-            score -= 1.1
+            score -= 2.0
             penalties.append("survival/prognosis endpoint for risk/prevention question")
+        if _has(t, "treatment", "therapy", "therapeutic") and not _has(t, "prevention", "prevent", "risk", "incidence"):
+            score -= 0.8
+            penalties.append("treatment endpoint for risk/prevention question")
         if _has(t, "cell", "cells", "mouse", "mice", "rat", "rats", "in vitro"):
             score -= 0.8
             penalties.append("mechanistic evidence for risk/prevention question")
@@ -111,9 +114,15 @@ def endpoint_score(question, paper, intents=None):
         if _has(t, "surrogate", "biomarker"):
             score -= 0.4
             penalties.append("surrogate endpoint")
-        if _has(t, "cell", "cells", "mouse", "mice", "rat", "rats", "in vitro"):
+        if animal_or_cell_only_signal(paper):
+            score -= 2.5
+            penalties.append("animal/cell-line evidence for clinical outcome question")
+        elif _has(t, "cell", "cells", "mouse", "mice", "rat", "rats", "in vitro"):
             score -= 0.7
             penalties.append("mechanistic evidence for clinical outcome question")
+        if safety_or_adverse_focus(paper) and not _has((question or "").lower(), "safety", "adverse", "harm", "risk"):
+            score -= 1.0
+            penalties.append("safety/adverse endpoint for non-safety question")
 
     return score, penalties
 
@@ -179,6 +188,9 @@ def population_score(question, paper):
         elif _has(t, "child", "children", "pediatric", "paediatric") and not _has(t, "adult", "adults"):
             score -= 3.0
             penalties.append("pediatric population for adult question")
+        elif _has(title, "child", "children", "pediatric", "paediatric", "adolescent"):
+            score -= 2.5
+            penalties.append("mixed/younger title for adult question")
         elif _has(t, "child", "children", "pediatric", "paediatric", "adolescent"):
             score -= 1.5
             penalties.append("mixed/younger population for adult question")
@@ -195,6 +207,24 @@ def conflict_signal(paper):
     t = _text(paper)
     return bool(_has_re(t, r"\b(no|not|neither|lack of|failed to|did not|does not|without)\b") and
                 _has(t, "benefit", "association", "significant", "reduce", "reduction", "effective", "effect"))
+
+
+def animal_or_cell_only_signal(paper):
+    """Likely animal/cell-line evidence with no clear human/clinical framing."""
+    t = _text(paper)
+    title = _title(paper)
+    title_preclinical = _has(title, "mouse", "mice", "rat", "rats", "murine", "cell", "cells", "in vitro")
+    title_human = _has(title, "human", "humans", "patient", "patients", "adult", "adults", "cohort", "trial", "clinical", "meta-analysis", "systematic review")
+    if title_preclinical and not title_human:
+        return True
+    has_preclinical = _has(t, "cell", "cells", "mouse", "mice", "rat", "rats", "murine", "in vitro")
+    has_human = _has(t, "human", "humans", "patient", "patients", "adult", "adults", "cohort", "trial", "clinical", "meta-analysis", "systematic review")
+    return bool(has_preclinical and not has_human)
+
+
+def safety_or_adverse_focus(paper):
+    title = _title(paper)
+    return _has(title, "safety", "adverse", "toxicity", "arterial stiffness", "endothelial function", "vascular", "morphology")
 
 
 def _norm_title(title):
@@ -266,7 +296,10 @@ def select_evidence(question, papers, max_papers=8, min_papers=4):
     def add(meta, p):
         if p.get("pmid") in selected_pmids:
             return False
-        if "pediatric title for adult question" in meta.get("penalties", []):
+        penalties = meta.get("penalties", [])
+        if any(str(x).startswith("missing required exposure/entity term") for x in penalties):
+            return False
+        if "pediatric title for adult question" in penalties:
             return False
         if _too_similar(p, selected):
             return False
@@ -290,21 +323,40 @@ def select_evidence(question, papers, max_papers=8, min_papers=4):
                 break
 
     # For clinical questions, avoid overloading generation with mechanistic evidence.
+    mech_cap = max_papers
     if "mechanism" not in intents:
         clinical = [p for p in selected if (p.get("evidence_selection") or {}).get("evidence_tier") != "mechanistic"]
         mech = [p for p in selected if (p.get("evidence_selection") or {}).get("evidence_tier") == "mechanistic"]
-        mech_cap = 1 if len(clinical) >= min_papers else 2
+        if len(clinical) >= 2 and not _has((question or "").lower(), "safety", "adverse", "harm", "risk"):
+            clinical = [p for p in clinical if not safety_or_adverse_focus(p)]
+        mech_cap = 1 if len(clinical) >= 2 else 2
+        if len(clinical) >= 2:
+            mech = [p for p in mech if not animal_or_cell_only_signal(p)]
         selected = clinical + mech[:mech_cap]
 
-    # If pruning dropped too many, backfill by score.
+    # If pruning dropped too many, backfill by score while preserving clinical caps.
     selected_pmids = {p.get("pmid") for p in selected}
     for _, meta, p in scored:
         if len(selected) >= min(max_papers, max(min_papers, len(papers))):
             break
-        if p.get("pmid") not in selected_pmids and "pediatric title for adult question" not in meta.get("penalties", []):
-            q = dict(p)
-            q["evidence_selection"] = meta
-            selected.append(q)
-            selected_pmids.add(p.get("pmid"))
+        if p.get("pmid") in selected_pmids:
+            continue
+        penalties = meta.get("penalties", [])
+        if any(str(x).startswith("missing required exposure/entity term") for x in penalties):
+            continue
+        if "pediatric title for adult question" in penalties:
+            continue
+        if "mechanism" not in intents:
+            current_mech = sum(1 for s in selected if (s.get("evidence_selection") or {}).get("evidence_tier") == "mechanistic")
+            if meta.get("evidence_tier") == "mechanistic" and current_mech >= mech_cap:
+                continue
+            if animal_or_cell_only_signal(p) and len(selected) >= 2:
+                continue
+            if safety_or_adverse_focus(p) and len(selected) >= 2 and not _has((question or "").lower(), "safety", "adverse", "harm", "risk"):
+                continue
+        q = dict(p)
+        q["evidence_selection"] = meta
+        selected.append(q)
+        selected_pmids.add(p.get("pmid"))
 
     return selected[:max_papers]

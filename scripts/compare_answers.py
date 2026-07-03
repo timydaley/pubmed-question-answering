@@ -64,6 +64,21 @@ def cited_pmids(text: str):
     return out
 
 
+def pmids_anywhere(text: str):
+    return {int(match) for match in PMID_RE.findall(text or "")}
+
+
+def unbracketed_pmids(text: str):
+    text = text or ""
+    outside = []
+    pos = 0
+    for match in re.finditer(r"\[[^\]]*\]", text):
+        outside.append(text[pos:match.start()])
+        pos = match.end()
+    outside.append(text[pos:])
+    return pmids_anywhere("\n".join(outside))
+
+
 def artifact_cited_pmids(row):
     status = row.get("citation_status") or {}
     return {int(p) for p in status.get("cited_pmids") or []}
@@ -83,6 +98,10 @@ def retrieved_pmids(row):
 
 def invalid_pmids(row):
     return cited_pmids(row.get("answer") or "") - retrieved_pmids(row)
+
+
+def invalid_pmids_anywhere(row):
+    return pmids_anywhere(row.get("answer") or "") - retrieved_pmids(row)
 
 
 def heading_names(answer: str):
@@ -156,7 +175,7 @@ def warning_count(rows):
     count = 0
     for row in rows:
         status = row.get("citation_status") or {}
-        if status.get("citation_validation_warning"):
+        if status.get("citation_validation_warning") or status.get("citation_format_warning"):
             count += 1
     return count
 
@@ -179,6 +198,9 @@ def print_aggregate(old_path, new_path, old_rows, new_rows):
         ("Avg generation latency (s)", avg(old_list, "generation_seconds"), avg(new_list, "generation_seconds")),
         ("Citation warning rows", warning_count(old_list), warning_count(new_list)),
         ("Invalid cited-PMID rows", invalid_count(old_list), invalid_count(new_list)),
+        ("Invalid PMID-anywhere rows", sum(1 for r in old_list if invalid_pmids_anywhere(r)), sum(1 for r in new_list if invalid_pmids_anywhere(r))),
+        ("Unbracketed PMID rows", sum(1 for r in old_list if unbracketed_pmids(r.get("answer") or "")), sum(1 for r in new_list if unbracketed_pmids(r.get("answer") or ""))),
+        ("Citation normalization note rows", sum(bool((r.get("citation_status") or {}).get("citation_normalization_note")) for r in old_list), sum(bool((r.get("citation_status") or {}).get("citation_normalization_note")) for r in new_list)),
         ("Manual citation extraction mismatches", citation_mismatch_count(old_list), citation_mismatch_count(new_list)),
         ("Rows with Evidence basis", sum(has_evidence_basis(r) for r in old_list), sum(has_evidence_basis(r) for r in new_list)),
         ("Rows with review flags", sum(bool(answer_flags(r)) for r in old_list), sum(bool(answer_flags(r)) for r in new_list)),

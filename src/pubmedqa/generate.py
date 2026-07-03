@@ -126,7 +126,7 @@ def answer(question, papers, per_paper=False, markdown=True):
 
 
 def cited_pmids(text):
-    """Extract PMID citations from [123], [123, 456], or [PMID:123] forms."""
+    """Extract bracket-form PMID citations: [123], [123, 456], or [PMID:123]."""
     out = set()
     for bracket in re.findall(r"\[([^\]]+)\]", text or ""):
         for m in re.findall(r"\b\d{5,9}\b", bracket):
@@ -134,9 +134,72 @@ def cited_pmids(text):
     return out
 
 
+def pmids_anywhere(text):
+    """Extract PMID-like numbers anywhere in text.
+
+    This intentionally uses the PMID digit width (5-9 digits), so normal years,
+    risk ratios, p-values, and confidence intervals are not treated as PMIDs.
+    """
+    return {int(m) for m in re.findall(r"\b\d{5,9}\b", text or "")}
+
+
+def unbracketed_pmids(text):
+    """PMID-like numbers present outside square-bracket citation spans."""
+    text = text or ""
+    outside = []
+    pos = 0
+    for match in re.finditer(r"\[[^\]]*\]", text):
+        outside.append(text[pos:match.start()])
+        pos = match.end()
+    outside.append(text[pos:])
+    return pmids_anywhere("\n".join(outside))
+
+
+def _replace_pmids_outside_brackets(text, valid_pmids):
+    """Convert valid bare/parenthesized PMID mentions outside brackets to [PMID]."""
+    text = text or ""
+    valid = {int(p) for p in valid_pmids}
+    if not valid:
+        return text
+
+    def normalize_segment(segment):
+        for pmid in sorted(valid, key=lambda x: len(str(x)), reverse=True):
+            s = str(pmid)
+            # Common model output in key-paper bullets: "(35546664)".
+            segment = re.sub(rf"\(\s*(?:PMID\s*:?\s*)?{re.escape(s)}\s*\)", f"[{s}]", segment, flags=re.IGNORECASE)
+            # Common prose form: "PMID 35546664" or "PMID:35546664".
+            segment = re.sub(rf"\bPMID\s*:?\s*{re.escape(s)}\b", f"[{s}]", segment, flags=re.IGNORECASE)
+            # Last resort for valid retrieved PMIDs only: bare PMID number.
+            segment = re.sub(rf"(?<![\d\[])\b{re.escape(s)}\b(?![\d\]])", f"[{s}]", segment)
+        return segment
+
+    parts = []
+    pos = 0
+    for match in re.finditer(r"\[[^\]]*\]", text):
+        parts.append(normalize_segment(text[pos:match.start()]))
+        parts.append(match.group(0))
+        pos = match.end()
+    parts.append(normalize_segment(text[pos:]))
+    return "".join(parts)
+
+
 def _validate_citations(text, valid_pmids):
+    valid_pmids = {int(p) for p in valid_pmids}
+    original_unbracketed_valid = unbracketed_pmids(text) & valid_pmids
+    text = _replace_pmids_outside_brackets(text, valid_pmids)
     cited = cited_pmids(text)
     hallucinated = cited - valid_pmids
+    unbracketed = unbracketed_pmids(text)
+    if original_unbracketed_valid:
+        text += (
+            "\n\n[citation-validation] NOTE: normalized retrieved PMIDs that were "
+            f"not in [PMID] citation format: {sorted(original_unbracketed_valid)}"
+        )
+    if unbracketed:
+        text += (
+            "\n\n[citation-validation] WARNING: PMID-like numbers not in [PMID] "
+            f"citation format: {sorted(unbracketed)}"
+        )
     if hallucinated:
         text += (
             "\n\n[citation-validation] WARNING: cited PMIDs not in the retrieved "
