@@ -6,6 +6,7 @@ Cloudflare Access. Do not expose this app directly to the public internet.
 from __future__ import annotations
 
 import asyncio
+import traceback
 import time
 from typing import Any
 
@@ -149,7 +150,8 @@ form.addEventListener('submit', async (e) => {{
         top: 10
       }})
     }});
-    const data = await res.json();
+    const contentType = res.headers.get('content-type') || '';
+    const data = contentType.includes('application/json') ? await res.json() : {detail: await res.text()};
     if (!res.ok) throw new Error(data.detail || 'Request failed');
     const elapsed = ((performance.now() - t0) / 1000).toFixed(1);
     statusEl.textContent = `Done in ${{elapsed}}s. Retrieval ${{data.retrieval_seconds}}s, generation ${{data.generation_seconds ?? 'n/a'}}s.`;
@@ -179,32 +181,45 @@ async def ask(payload: AskRequest) -> JSONResponse:
         raise HTTPException(status_code=429, detail="Another question is currently running. Please try again in a minute.")
 
     async with _answer_lock:
-        t0 = time.perf_counter()
-        con = db.connect()
-        papers = retrieve.search(con, payload.question, top_n=payload.retrieve_pool)
-        retrieval_s = time.perf_counter() - t0
-        recorded = papers[: payload.top]
-        selected = evidence_select.select_evidence(
-            payload.question,
-            papers,
-            max_papers=payload.evidence_context,
-        )
+        try:
+            t0 = time.perf_counter()
+            con = db.connect()
+            papers = retrieve.search(con, payload.question, top_n=payload.retrieve_pool)
+            retrieval_s = time.perf_counter() - t0
+            recorded = papers[: payload.top]
+            selected = evidence_select.select_evidence(
+                payload.question,
+                papers,
+                max_papers=payload.evidence_context,
+            )
 
-        answer = None
-        generation_s = None
-        citation_status = None
-        if not payload.no_llm:
-            g0 = time.perf_counter()
-            answer = generate.answer(payload.question, selected)
-            generation_s = time.perf_counter() - g0
-            citation_status = _citation_status(answer, [int(p["pmid"]) for p in selected])
+            answer = None
+            generation_s = None
+            citation_status = None
+            if not payload.no_llm:
+                if not selected:
+                    raise HTTPException(status_code=404, detail="No relevant PubMed papers were selected for this question.")
+                g0 = time.perf_counter()
+                answer = generate.answer(payload.question, selected)
+                generation_s = time.perf_counter() - g0
+                citation_status = _citation_status(answer, [int(p["pmid"]) for p in selected])
 
-        return JSONResponse({
-            "question": payload.question,
-            "retrieval_seconds": round(retrieval_s, 3),
-            "generation_seconds": round(generation_s, 3) if generation_s is not None else None,
-            "citation_status": citation_status,
-            "papers": [_paper_summary(p) for p in recorded],
-            "selected_evidence_papers": [_paper_summary(p) for p in selected],
-            "answer": answer,
-        })
+            return JSONResponse({
+                "question": payload.question,
+                "retrieval_seconds": round(retrieval_s, 3),
+                "generation_seconds": round(generation_s, 3) if generation_s is not None else None,
+                "citation_status": citation_status,
+                "papers": [_paper_summary(p) for p in recorded],
+                "selected_evidence_papers": [_paper_summary(p) for p in selected],
+                "answer": answer,
+            })
+        except HTTPException:
+            raise
+        except Exception as exc:
+            traceback.print_exc()
+            return JSONResponse(
+                status_code=500,
+                content={
+                    "detail": f"Internal server error while answering: {type(exc).__name__}: {exc}",
+                },
+            )
