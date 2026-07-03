@@ -7,3 +7,5 @@ lxml>=5
 requests>=2.31
 numpy>=1.26
 tqdm>=4.66
+fastapi>=0.111
+uvicorn[standard]>=0.30
