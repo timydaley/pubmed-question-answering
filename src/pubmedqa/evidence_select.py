@@ -43,9 +43,26 @@ def infer_intent(question):
         intents.add("clinical_outcomes")
     if _has(q, "supplementation", "supplement"):
         intents.add("supplementation")
+    if _has(q, "chemotherapy", "chemo") and _has(q, "nausea", "vomiting", "emesis", "antiemetic", "anti-emetic"):
+        intents.add("cinv_management")
+        intents.add("clinical_outcomes")
     if not intents:
         intents.add("general_clinical")
     return intents
+
+
+def retrieval_query(question):
+    """Optional query expansion for well-known clinical shorthand.
+
+    Keep this conservative: only expand when the user query clearly names a
+    syndrome where the unexpanded retrieval pool tends to over-sample indirect
+    supportive-care interventions.
+    """
+    intents = infer_intent(question)
+    q = question or ""
+    if "cinv_management" in intents and not _has(q.lower(), "antiemetic", "anti-emetic", "ondansetron", "aprepitant", "dexamethasone"):
+        return q + " antiemetic ondansetron dexamethasone aprepitant guideline prevention treatment"
+    return q
 
 
 def evidence_tier(p):
@@ -109,7 +126,7 @@ def endpoint_score(question, paper, intents=None):
             penalties.append("cell-line evidence for prognosis question")
 
     if "clinical_outcomes" in intents:
-        if _has(t, "outcome", "outcomes", "mortality", "major adverse", "hospitalization", "hospitalisation", "kidney", "renal", "egfr", "cardiovascular", "heart failure"):
+        if _has(t, "outcome", "outcomes", "mortality", "major adverse", "hospitalization", "hospitalisation", "kidney", "renal", "egfr", "cardiovascular", "heart failure", "nausea", "vomiting", "emesis", "antiemetic", "anti-emetic"):
             score += 1.5
         if _has(t, "surrogate", "biomarker"):
             score -= 0.4
@@ -123,6 +140,20 @@ def endpoint_score(question, paper, intents=None):
         if safety_or_adverse_focus(paper) and not _has((question or "").lower(), "safety", "adverse", "harm", "risk"):
             score -= 1.0
             penalties.append("safety/adverse endpoint for non-safety question")
+
+    if "cinv_management" in intents:
+        if _has(t, "chemotherapy", "chemo", "antineoplastic") and _has(t, "nausea", "vomiting", "emesis", "antiemetic", "anti-emetic"):
+            score += 2.0
+        if pharmacologic_cinv_signal(paper):
+            score += 2.6
+        if _has(title, "treatment", "prevention", "management", "pharmacotherapy", "medical treatment"):
+            score += 1.0
+        if nonpharmacologic_cinv_signal(paper) and not _has((question or "").lower(), "non-pharmacologic", "nonpharmacologic", "massage", "acupressure", "acupuncture", "ginger", "behavioral", "behavioural", "hypnosis"):
+            score -= 1.8
+            penalties.append("non-pharmacologic CINV intervention for broad chemotherapy vomiting question")
+        if _has(title, "children", "pediatric", "paediatric") and not _has((question or "").lower(), "child", "children", "pediatric", "paediatric"):
+            score -= 1.0
+            penalties.append("pediatric CINV evidence for broad/adult-unspecified question")
 
     return score, penalties
 
@@ -227,6 +258,35 @@ def safety_or_adverse_focus(paper):
     return _has(title, "safety", "adverse", "toxicity", "arterial stiffness", "endothelial function", "vascular", "morphology")
 
 
+def pharmacologic_cinv_signal(paper):
+    """Pharmacologic/antiemetic chemotherapy-induced nausea/vomiting evidence."""
+    t = _text(paper)
+    title = _title(paper)
+    if _has(title, "massage", "acupressure", "acupuncture", "moxibustion", "ginger", "hypnosis", "relaxation", "music therapy", "behavioral", "behavioural", "expectancy", "psychological"):
+        return False
+    drug_signal = _has(
+        t,
+        "ondansetron", "granisetron", "palonosetron", "5-ht3", "5 ht3",
+        "serotonin antagonist", "metoclopramide", "dexamethasone", "corticosteroid",
+        "aprepitant", "fosaprepitant", "nk1", "neurokinin", "olanzapine",
+        "prochlorperazine", "droperidol", "propofol",
+    )
+    management_title = _has(title, "pharmacotherapy", "medical treatment", "antiemetic", "anti-emetic")
+    treatment_title = _has(title, "treatment", "prevention", "management") and _has(title, "chemotherapy", "nausea", "vomiting", "emesis")
+    return bool(drug_signal or management_title or treatment_title)
+
+
+def nonpharmacologic_cinv_signal(paper):
+    """Non-drug supportive interventions that should not dominate broad CINV answers."""
+    t = _text(paper)
+    return _has(
+        t,
+        "massage", "acupressure", "acupuncture", "moxibustion", "ginger",
+        "hypnosis", "relaxation", "music therapy", "behavioral intervention",
+        "behavioural intervention", "expectancy", "psychological intervention",
+    )
+
+
 def _norm_title(title):
     return re.sub(r"\s+", " ", re.sub(r"[^a-z0-9]+", " ", (title or "").lower())).strip()
 
@@ -323,10 +383,26 @@ def select_evidence(question, papers, max_papers=8, min_papers=4):
                 break
 
     # For clinical questions, avoid overloading generation with mechanistic evidence.
+    # For CINV management, pharmacologic/antiemetic papers are clinically relevant
+    # even when the title/abstract heuristic labels them as mechanistic.
     mech_cap = max_papers
     if "mechanism" not in intents:
-        clinical = [p for p in selected if (p.get("evidence_selection") or {}).get("evidence_tier") != "mechanistic"]
-        mech = [p for p in selected if (p.get("evidence_selection") or {}).get("evidence_tier") == "mechanistic"]
+        if "cinv_management" in intents:
+            clinical = [p for p in selected if (p.get("evidence_selection") or {}).get("evidence_tier") != "mechanistic" or pharmacologic_cinv_signal(p)]
+            mech = [p for p in selected if (p.get("evidence_selection") or {}).get("evidence_tier") == "mechanistic" and not pharmacologic_cinv_signal(p)]
+            nonpharm_cap = 1 if any(pharmacologic_cinv_signal(p) for p in clinical) else 2
+            kept = []
+            nonpharm_n = 0
+            for p in clinical:
+                if nonpharmacologic_cinv_signal(p) and not pharmacologic_cinv_signal(p):
+                    if nonpharm_n >= nonpharm_cap:
+                        continue
+                    nonpharm_n += 1
+                kept.append(p)
+            clinical = kept
+        else:
+            clinical = [p for p in selected if (p.get("evidence_selection") or {}).get("evidence_tier") != "mechanistic"]
+            mech = [p for p in selected if (p.get("evidence_selection") or {}).get("evidence_tier") == "mechanistic"]
         if len(clinical) >= 2 and not _has((question or "").lower(), "safety", "adverse", "harm", "risk"):
             clinical = [p for p in clinical if not safety_or_adverse_focus(p)]
         mech_cap = 1 if len(clinical) >= 2 else 2
@@ -348,8 +424,13 @@ def select_evidence(question, papers, max_papers=8, min_papers=4):
             continue
         if "mechanism" not in intents:
             current_mech = sum(1 for s in selected if (s.get("evidence_selection") or {}).get("evidence_tier") == "mechanistic")
-            if meta.get("evidence_tier") == "mechanistic" and current_mech >= mech_cap:
+            is_cinv_pharm = "cinv_management" in intents and pharmacologic_cinv_signal(p)
+            if meta.get("evidence_tier") == "mechanistic" and current_mech >= mech_cap and not is_cinv_pharm:
                 continue
+            if "cinv_management" in intents and nonpharmacologic_cinv_signal(p) and not pharmacologic_cinv_signal(p):
+                current_nonpharm = sum(1 for s in selected if nonpharmacologic_cinv_signal(s) and not pharmacologic_cinv_signal(s))
+                if current_nonpharm >= 1 and any(pharmacologic_cinv_signal(s) for s in selected):
+                    continue
             if animal_or_cell_only_signal(p) and len(selected) >= 2:
                 continue
             if safety_or_adverse_focus(p) and len(selected) >= 2 and not _has((question or "").lower(), "safety", "adverse", "harm", "risk"):

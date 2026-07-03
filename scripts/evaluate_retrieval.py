@@ -98,7 +98,8 @@ def main():
     for i, question in enumerate(questions, 1):
         retrieve_n = args.retrieve_pool or args.top
         t0 = time.perf_counter()
-        papers = retrieve.search(con, question, top_n=retrieve_n)
+        retrieval_question = evidence_select.retrieval_query(question)
+        papers = retrieve.search(con, retrieval_question, top_n=retrieve_n)
         retrieval_s = time.perf_counter() - t0
         recorded_papers = papers[:args.top]
 
@@ -128,6 +129,7 @@ def main():
 
         row = {
             "question": question,
+            "retrieval_question": retrieval_question,
             "top_n": args.top,
             "retrieve_pool": retrieve_n,
             "evidence_context": None if args.no_evidence_select or not args.with_llm else args.evidence_context,

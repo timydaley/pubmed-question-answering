@@ -40,7 +40,8 @@ def main():
     con = db.connect()
     retrieve_n = args.retrieve_pool or args.top
     t0 = time.time()
-    papers = retrieve.search(con, question, top_n=retrieve_n)
+    retrieval_question = evidence_select.retrieval_query(question)
+    papers = retrieve.search(con, retrieval_question, top_n=retrieve_n)
     dt = time.time() - t0
     if not papers:
         print("No results — did you build the index? (scripts/p0_build_index.py)")

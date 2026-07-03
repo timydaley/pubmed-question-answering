@@ -184,7 +184,8 @@ async def ask(payload: AskRequest) -> JSONResponse:
         try:
             t0 = time.perf_counter()
             con = db.connect()
-            papers = retrieve.search(con, payload.question, top_n=payload.retrieve_pool)
+            retrieval_question = evidence_select.retrieval_query(payload.question)
+            papers = retrieve.search(con, retrieval_question, top_n=payload.retrieve_pool)
             retrieval_s = time.perf_counter() - t0
             recorded = papers[: payload.top]
             selected = evidence_select.select_evidence(
@@ -206,6 +207,7 @@ async def ask(payload: AskRequest) -> JSONResponse:
 
             return JSONResponse({
                 "question": payload.question,
+                "retrieval_question": retrieval_question,
                 "retrieval_seconds": round(retrieval_s, 3),
                 "generation_seconds": round(generation_s, 3) if generation_s is not None else None,
                 "citation_status": citation_status,
