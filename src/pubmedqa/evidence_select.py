@@ -30,9 +30,63 @@ def _has_re(text, pattern):
     return re.search(pattern, text) is not None
 
 
+CLINICAL_MANAGEMENT_TERMS = (
+    "treatment", "treat", "therapy", "management", "manage", "prevention", "prevent",
+    "control", "what helps", "what should be used", "first line", "standard of care",
+    "medication", "medicine", "drug", "symptom", "nausea", "vomiting", "pain",
+    "insomnia", "hypertension", "migraine",
+)
+
+ADJUNCTIVE_QUERY_TERMS = (
+    "massage", "acupressure", "acupuncture", "moxibustion", "ginger", "hypnosis",
+    "relaxation", "music therapy", "behavioral", "behavioural", "psychological",
+    "supplement", "diet", "complementary", "alternative", "non-pharmacologic",
+    "nonpharmacologic", "non-drug", "nondrug",
+)
+
+MANAGEMENT_EXPANSION_TERMS = (
+    "treatment", "management", "guideline", "clinical practice guideline",
+    "standard of care", "first line", "therapy", "prevention", "pharmacologic",
+    "drug therapy", "randomized trial", "systematic review", "meta-analysis",
+)
+
+LOCAL_MANAGEMENT_SYNONYMS = (
+    (
+        re.compile(r"\b(chemo(?:therapy)?|antineoplastic)\b.*\b(nausea|vomiting|emesis)\b|\b(nausea|vomiting|emesis)\b.*\b(chemo(?:therapy)?|antineoplastic)\b"),
+        ("chemotherapy-induced nausea and vomiting", "CINV", "antiemetic"),
+    ),
+)
+
+
+def is_clinical_management_question(question):
+    """Detect broad treatment/prevention/symptom-control questions."""
+    q = (question or "").lower()
+    if not q:
+        return False
+    if any(term in q for term in CLINICAL_MANAGEMENT_TERMS):
+        return True
+    # Family-use shorthand often omits "treatment" but names a symptom + clinical context.
+    if _has(q, "nausea", "vomiting", "pain") and _has(q, "chemotherapy", "pregnancy", "diabetic", "neuropathy", "back"):
+        return True
+    return False
+
+
+def explicit_adjunctive_query(question):
+    q = (question or "").lower()
+    return any(term in q for term in ADJUNCTIVE_QUERY_TERMS)
+
+
+def behavioral_central_question(question):
+    """Conditions where behavioral/rehab care may be standard, not adjunctive."""
+    q = (question or "").lower()
+    return _has(q, "insomnia", "depression", "anxiety", "back pain", "chronic pain", "pain treatment", "physical therapy", "rehabilitation")
+
+
 def infer_intent(question):
     q = (question or "").lower()
     intents = set()
+    if is_clinical_management_question(question):
+        intents.add("clinical_management")
     if _has(q, "mechanism", "activation", "pathway", "signaling", "signalling"):
         intents.add("mechanism")
     if _has(q, "prognosis", "prognostic") or _has(q, "mortality", "survival") and not _has(q, "prevent", "prevention"):
@@ -52,23 +106,39 @@ def infer_intent(question):
 
 
 def retrieval_query(question):
-    """Optional query expansion for well-known clinical shorthand.
-
-    Keep this conservative: only expand when the user query clearly names a
-    syndrome where the unexpanded retrieval pool tends to over-sample indirect
-    supportive-care interventions.
-    """
+    """Conservative transparent expansion for broad management questions."""
     intents = infer_intent(question)
-    q = question or ""
-    if "cinv_management" in intents and not _has(q.lower(), "antiemetic", "anti-emetic", "ondansetron", "aprepitant", "dexamethasone"):
-        return q + " antiemetic ondansetron dexamethasone aprepitant guideline prevention treatment"
-    return q
+    q = (question or "").strip()
+    if "clinical_management" not in intents:
+        return q
+
+    additions = []
+    q_lower = q.lower()
+    for pattern, synonyms in LOCAL_MANAGEMENT_SYNONYMS:
+        if pattern.search(q_lower):
+            additions.extend(synonyms)
+    additions.extend(MANAGEMENT_EXPANSION_TERMS)
+
+    # Preserve explicit adjunctive intent: don't drown a ginger/acupressure/etc.
+    # query in generic standard-care terms, but still add review/trial anchors.
+    if explicit_adjunctive_query(q):
+        additions = ["randomized trial", "systematic review", "meta-analysis"]
+
+    seen = set(re.findall(r"[a-z0-9]+(?: [a-z0-9]+)*", q_lower))
+    unique = []
+    for term in additions:
+        key = term.lower()
+        if key not in seen and key not in unique:
+            unique.append(term)
+    return " ".join([q] + unique)
 
 
 def evidence_tier(p):
     t = _text(p)
     pub = (p.get("pubtypes") or "").lower()
     title = _title(p)
+    if "guideline" in pub or "practice guideline" in pub or _has(title, "guideline", "guidelines", "consensus", "recommendations"):
+        return "guideline_or_consensus", 4.2
     if "meta-analysis" in pub or "meta-analysis" in title or "meta analysis" in title:
         return "meta_analysis", 4.0
     if "systematic review" in pub or "systematic review" in title:
@@ -86,6 +156,108 @@ def evidence_tier(p):
     if _has(pub, "editorial", "comment", "letter", "news"):
         return "editorial", 0.6
     return "other", 1.2
+
+
+def intervention_tags(paper):
+    """Lightweight evidence/intervention taxonomy for selection metadata."""
+    t = _text(paper)
+    pub = (paper.get("pubtypes") or "").lower()
+    title = _title(paper)
+    tags = set()
+
+    if _has(pub, "guideline", "practice guideline", "consensus") or _has(title, "guideline", "consensus", "recommendation"):
+        tags.add("guideline_or_consensus")
+    if _has(pub, "systematic review", "meta-analysis") or _has(title, "systematic review", "meta-analysis", "meta analysis"):
+        tags.add("systematic_review_or_meta_analysis")
+    if _has(pub, "randomized controlled trial", "clinical trial") or _has(title, "randomized", "randomised", "controlled trial"):
+        tags.add("randomized_trial")
+    if _has(pub, "cohort", "case-control", "observational") or _has(t, "cohort", "case-control", "observational"):
+        tags.add("observational")
+    if _has(t, "cell", "cells", "mouse", "mice", "rat", "rats", "murine", "in vitro", "pathway", "mechanism"):
+        tags.add("mechanistic")
+    if _has(t, "diagnosis", "diagnostic", "screening", "biomarker"):
+        tags.add("diagnostic")
+    if _has(t, "risk", "incidence", "prognosis", "prognostic", "survival", "mortality"):
+        tags.add("risk_factor")
+
+    if _has(t, "ondansetron", "granisetron", "palonosetron", "5-ht3", "metoclopramide", "dexamethasone", "aprepitant", "fosaprepitant", "nk1", "olanzapine", "drug", "pharmacologic", "pharmacological", "pharmacotherapy", "medication"):
+        tags.add("pharmacologic")
+    if _has(t, "surgery", "surgical", "procedure", "ablation", "implantation", "stent", "operation"):
+        tags.add("procedure_or_surgery")
+    if _has(t, "behavioral", "behavioural", "psychological", "cognitive behavioral", "cbt", "hypnosis", "relaxation", "expectancy"):
+        tags.add("behavioral_or_psychological")
+    if _has(t, "physical therapy", "physiotherapy", "rehabilitation", "exercise", "training", "manual therapy"):
+        tags.add("physical_therapy_or_rehab")
+    if _has(t, "diet", "dietary", "supplement", "ginger", "vitamin", "omega-3", "fish oil", "nutrition"):
+        tags.add("diet_or_supplement")
+    if _has(t, "massage", "acupressure", "acupuncture", "moxibustion", "music therapy", "complementary", "alternative"):
+        tags.add("complementary_or_alternative")
+    if _has(t, "device", "stimulation", "implant", "monitor"):
+        tags.add("device")
+    return sorted(tags)
+
+
+def broad_management_review_signal(paper):
+    title = _title(paper)
+    return _has(title,
+        "guideline", "guidelines", "consensus", "recommendations",
+        "management of", "optimizing prevention", "prevention and management",
+        "treatment of", "therapeutic choices", "clinical practice",
+        "standard of care", "place in therapy", "evidence-based review",
+    )
+
+
+def narrow_management_signal(paper):
+    title = _title(paper)
+    return _has(title,
+        "pharmacogenetic", "pharmacogenomic", "protocol", "safety of", "adverse",
+        "pediatric", "paediatric", "children", "child", "breakthrough", "refractory",
+        "subgroup", "genetic polymorphism", "polymorphisms",
+    )
+
+
+def management_centrality_score(question, paper, tags=None):
+    """Estimate centrality for broad clinical management evidence."""
+    tags = set(tags or intervention_tags(paper))
+    q = (question or "").lower()
+    t = _text(paper)
+    title = _title(paper)
+    score = 0.0
+
+    if "guideline_or_consensus" in tags:
+        score += 3.0
+    if "systematic_review_or_meta_analysis" in tags:
+        score += 2.2
+    if "randomized_trial" in tags:
+        score += 1.8
+    if "pharmacologic" in tags:
+        score += 1.2
+    if behavioral_central_question(question) and (tags & {"behavioral_or_psychological", "physical_therapy_or_rehab"}):
+        score += 1.2
+    if broad_management_review_signal(paper):
+        score += 2.0
+    if _has(title, "treatment", "therapy", "management", "prevention", "guideline", "standard of care", "first-line", "first line"):
+        score += 1.0
+    elif _has(t, "treatment", "therapy", "management", "prevention", "standard of care", "first-line", "first line"):
+        score += 0.5
+    if "cinv_management" in infer_intent(question) and pharmacologic_cinv_signal(paper):
+        score += 2.0
+
+    adjunctive_tags = {"complementary_or_alternative", "diet_or_supplement"}
+    if not behavioral_central_question(question):
+        adjunctive_tags.add("behavioral_or_psychological")
+    adjunctive = bool(tags & adjunctive_tags)
+    if adjunctive and not explicit_adjunctive_query(q):
+        score -= 1.8
+    if animal_or_cell_only_signal(paper):
+        score -= 2.0
+    if "mechanistic" in tags and not (tags & {"randomized_trial", "systematic_review_or_meta_analysis", "guideline_or_consensus"}):
+        score -= 0.8
+    if narrow_management_signal(paper) and not explicit_adjunctive_query(q):
+        score -= 1.8
+    if _has(title, "pilot", "feasibility"):
+        score -= 0.8
+    return round(score, 4)
 
 
 def endpoint_score(question, paper, intents=None):
@@ -124,6 +296,15 @@ def endpoint_score(question, paper, intents=None):
         if _has(t, "cell", "cells", "in vitro"):
             score -= 0.8
             penalties.append("cell-line evidence for prognosis question")
+
+    if "clinical_management" in intents:
+        if _has(t, "treatment", "treat", "therapy", "management", "prevention", "prevent", "control", "guideline", "standard of care", "first line", "first-line"):
+            score += 1.6
+        if _has(title, "treatment", "therapy", "management", "prevention", "guideline", "recommendation"):
+            score += 1.0
+        if animal_or_cell_only_signal(paper):
+            score -= 2.0
+            penalties.append("animal/cell-line evidence for management question")
 
     if "clinical_outcomes" in intents:
         if _has(t, "outcome", "outcomes", "mortality", "major adverse", "hospitalization", "hospitalisation", "kidney", "renal", "egfr", "cardiovascular", "heart failure", "nausea", "vomiting", "emesis", "antiemetic", "anti-emetic"):
@@ -305,12 +486,16 @@ def _too_similar(paper, selected, threshold=0.90):
 def score_paper(question, paper):
     intents = infer_intent(question)
     tier, tier_score = evidence_tier(paper)
+    tags = intervention_tags(paper)
+    centrality = management_centrality_score(question, paper, tags) if "clinical_management" in intents else 0.0
     exposure, exposure_penalties = exposure_score(question, paper)
     endpoint, endpoint_penalties = endpoint_score(question, paper, intents=intents)
     pop, pop_penalties = population_score(question, paper)
     retrieval = float(paper.get("score") or 0.0)
     impact = float(paper.get("impact_score") or 0.0)
     direct = tier_score + exposure + endpoint + pop + min(retrieval, 2.0) * 0.35 + impact * 0.25
+    if "clinical_management" in intents:
+        direct += centrality
 
     # For clinical questions, keep mechanistic evidence available but below direct human evidence.
     if "mechanism" not in intents and tier == "mechanistic":
@@ -326,6 +511,8 @@ def score_paper(question, paper):
         "exposure_score": round(exposure, 4),
         "endpoint_score": round(endpoint, 4),
         "population_score": round(pop, 4),
+        "intervention_tags": tags,
+        "management_centrality_score": centrality,
         "conflict_signal": conflict_signal(paper),
         "penalties": exposure_penalties + endpoint_penalties + pop_penalties,
         "intents": sorted(intents),
@@ -382,6 +569,13 @@ def select_evidence(question, papers, max_papers=8, min_papers=4):
                 add(meta, p)
                 break
 
+    def is_adjunctive(p):
+        tags = set((p.get("evidence_selection") or {}).get("intervention_tags") or intervention_tags(p))
+        adjunctive_tags = {"complementary_or_alternative", "diet_or_supplement"}
+        if not behavioral_central_question(question):
+            adjunctive_tags.add("behavioral_or_psychological")
+        return bool(tags & adjunctive_tags) and "pharmacologic" not in tags
+
     # For clinical questions, avoid overloading generation with mechanistic evidence.
     # For CINV management, pharmacologic/antiemetic papers are clinically relevant
     # even when the title/abstract heuristic labels them as mechanistic.
@@ -410,6 +604,20 @@ def select_evidence(question, papers, max_papers=8, min_papers=4):
             mech = [p for p in mech if not animal_or_cell_only_signal(p)]
         selected = clinical + mech[:mech_cap]
 
+    # For broad management questions, adjunctive/complementary/supplement/behavioral
+    # papers and narrow subgroup/special-scenario papers can be included but should
+    # not dominate unless explicitly requested.
+    if "clinical_management" in intents and not explicit_adjunctive_query(question):
+        broad_or_core = [p for p in selected if not narrow_management_signal(p)]
+        narrow = [p for p in selected if narrow_management_signal(p)]
+        narrow_cap = 1 if len(broad_or_core) >= 4 else 2
+        selected = broad_or_core + narrow[:narrow_cap]
+
+        central = [p for p in selected if not is_adjunctive(p)]
+        adjunctive = [p for p in selected if is_adjunctive(p)]
+        adjunct_cap = 2 if len(central) >= 4 else 1 if central else 2
+        selected = central + adjunctive[:adjunct_cap]
+
     # If pruning dropped too many, backfill by score while preserving clinical caps.
     selected_pmids = {p.get("pmid") for p in selected}
     for _, meta, p in scored:
@@ -435,6 +643,22 @@ def select_evidence(question, papers, max_papers=8, min_papers=4):
                 continue
             if safety_or_adverse_focus(p) and len(selected) >= 2 and not _has((question or "").lower(), "safety", "adverse", "harm", "risk"):
                 continue
+            if "clinical_management" in intents and not explicit_adjunctive_query(question):
+                current_central = sum(1 for s in selected if not is_adjunctive(s))
+                current_adjunctive = sum(1 for s in selected if is_adjunctive(s))
+                adj_cap = 2 if current_central >= 4 else 1 if current_central else 2
+                candidate_tags = set(meta.get("intervention_tags") or [])
+                adj_tags = {"complementary_or_alternative", "diet_or_supplement"}
+                if not behavioral_central_question(question):
+                    adj_tags.add("behavioral_or_psychological")
+                candidate_adjunctive = bool(candidate_tags & adj_tags) and "pharmacologic" not in candidate_tags
+                if candidate_adjunctive and current_adjunctive >= adj_cap:
+                    continue
+                current_broad = sum(1 for s in selected if not narrow_management_signal(s))
+                current_narrow = sum(1 for s in selected if narrow_management_signal(s))
+                narrow_cap = 1 if current_broad >= 4 else 2
+                if narrow_management_signal(p) and current_narrow >= narrow_cap:
+                    continue
         q = dict(p)
         q["evidence_selection"] = meta
         selected.append(q)

@@ -3,6 +3,7 @@ import re
 from functools import lru_cache
 
 from . import config
+from . import evidence_select
 
 SYSTEM = (
     "You are a careful biomedical assistant. Answer ONLY from the provided abstracts. "
@@ -70,11 +71,20 @@ def _build_prompt(question, papers, tokenizer, per_paper=False, markdown=True):
             "Bottom line:\n\n"
         )
 
+    management_rule = ""
+    if evidence_select.is_clinical_management_question(question):
+        management_rule = (
+            "- For broad clinical management questions, first summarize standard-care or most evidence-supported management at the condition level. "
+            "Do not lead with a single narrow regimen, drug, device, subgroup, or special scenario unless the abstracts/guidelines clearly make it the central standard of care. "
+            "Distinguish first-line/core options from adjunctive, complementary, behavioral, dietary, or non-pharmacologic options; mention adjunctive options after core therapies and do not let them dominate unless the question asks about them.\n"
+        )
+
     user = (
         f"ABSTRACTS:\n{_context(papers)}\n\n"
         f"QUESTION: {question}\n\n"
         f"{structure}"
         "Requirements:\n"
+        f"{management_rule}"
         "- Every factual claim must include inline [PMID] citations.\n"
         "- In 'Evidence basis', write one concise sentence describing the evidence type and population/context, e.g. randomized outcome trials, observational cohorts/meta-analyses, or mechanistic/cell-line evidence.\n"
         "- Explicitly distinguish risk/incidence/prevention from survival after diagnosis, treatment response, surrogate outcomes, and mechanistic findings.\n"

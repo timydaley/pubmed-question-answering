@@ -13,7 +13,7 @@ from .generate import _load_mlx
 
 
 _STOPWORDS = {
-    "and", "or", "the", "for", "with", "without", "from", "into", "does",
+    "and", "or", "the", "for", "with", "without", "from", "into", "during", "does",
     "do", "did", "use", "using", "risk", "risks", "study", "studies", "effect",
     "effects", "may", "might", "can", "could", "help", "helps", "reduce",
     "reduced", "reducing", "association", "associated", "patient", "patients",
@@ -128,6 +128,19 @@ def _entity_group_present(text, aliases):
     return any(_phrase_present(text, alias) for alias in aliases)
 
 
+_GENERIC_SEARCH_TERMS = {
+    # Evidence-type and broad management expansion words. These are useful for
+    # recall but should never be the only reason a paper is considered relevant.
+    "treatment", "treat", "therapy", "management", "manage", "guideline",
+    "clinical", "practice", "standard", "care", "first", "line", "prevention",
+    "prevent", "pharmacologic", "pharmacological", "drug", "randomized",
+    "randomised", "trial", "systematic", "review", "meta", "analysis",
+    "controlled", "study", "studies", "patient", "patients", "evidence",
+    "effective", "efficacy", "safety", "outcome", "outcomes", "disease",
+    "disorder", "chronic", "acute", "recurrent", "recurrence",
+}
+
+
 def _required_concept_groups(question):
     """Return endpoint concept stems that should survive broad lexical matching."""
     text = (question or "").lower()
@@ -135,6 +148,37 @@ def _required_concept_groups(question):
     if re.search(r"\bprognos(?:is|tic)?\b", text):
         groups.append(("prognos", "survival", "outcome", "mortality"))
     return groups
+
+
+def _salient_anchor_terms(question):
+    """Non-generic query concepts that must anchor expanded retrieval.
+
+    Clinical-management expansion intentionally adds generic terms such as
+    guideline, treatment, randomized trial, systematic review, and meta-analysis.
+    Dense/BM25 fusion can otherwise reward papers that match only those generic
+    terms. This extracts content-bearing query concepts while excluding the
+    expansion vocabulary, so ranking remains anchored to the user's topic.
+    """
+    terms = []
+    seen = set()
+    for t in _query_terms(question):
+        if t in _GENERIC_SEARCH_TERMS or t in _STOPWORDS:
+            continue
+        if t not in seen:
+            seen.add(t)
+            terms.append(t)
+    return terms
+
+
+def _salient_anchor_min_count(terms):
+    if not terms:
+        return 0
+    if len(terms) == 1:
+        return 1
+    # Broad family-use questions often have two core concepts (symptom + context,
+    # disease + endpoint). Requiring two prevents generic evidence-type matches
+    # without forcing every synonym/variant from expansion to appear.
+    return 2
 
 
 def _concept_group_present(text, stems):
@@ -439,6 +483,8 @@ def search(con, question, top_n=config.TOP_N_CONTEXT):
     required_phrases = _required_exact_phrases(question, focus)
     required_entities = _required_entity_groups(question, focus)
     required_concepts = _required_concept_groups(question)
+    anchor_terms = _salient_anchor_terms(question)
+    anchor_min = _salient_anchor_min_count(anchor_terms)
     clinical_query = _is_clinical_query(question)
     qv = embed.embed_query(question)
     dense = vectorstore.search(qv, config.DENSE_TOPK)
@@ -473,8 +519,10 @@ def search(con, question, top_n=config.TOP_N_CONTEXT):
             continue
         overlap = _overlap_count(content, terms)
         focus_overlap = _overlap_count(content, focus)
+        anchor_overlap = _overlap_count(content, anchor_terms)
         rel = s / hi if hi > 0 else 0.0
         title_text = (p.get("title") or "").lower()
+        title_anchor_overlap = _overlap_count(title_text, anchor_terms)
         entity_overlap = sum(1 for aliases in required_entities if _entity_group_present(content, aliases))
         concept_overlap = sum(1 for stems in required_concepts if _concept_group_present(content, stems))
         title_entity_overlap = sum(1 for aliases in required_entities if _entity_group_present(title_text, aliases))
@@ -484,6 +532,8 @@ def search(con, question, top_n=config.TOP_N_CONTEXT):
         if required_entities and entity_overlap < len(required_entities):
             continue
         if required_concepts and concept_overlap < len(required_concepts):
+            continue
+        if anchor_min and anchor_overlap < anchor_min:
             continue
         if focus and focus_overlap == 0 and rel < config.KEYWORD_FILTER_MIN_REL:
             continue
@@ -499,6 +549,8 @@ def search(con, question, top_n=config.TOP_N_CONTEXT):
             + (concept_overlap * config.KEYWORD_FILTER_BONUS)
             + (title_entity_overlap * config.KEYWORD_FILTER_BONUS)
             + (title_concept_overlap * config.KEYWORD_FILTER_BONUS)
+            + (anchor_overlap * config.KEYWORD_FILTER_BONUS)
+            + (title_anchor_overlap * config.KEYWORD_FILTER_BONUS)
             + pub_boost
         )
         ranked.append((pmid, final, rel, overlap, focus_overlap, pub_boost))

@@ -49,6 +49,8 @@ def main():
 
     if not args.summary_only:
         shown = papers[:args.top]
+        if retrieval_question != question:
+            print(f"\nretrieval_question: {retrieval_question}")
         print(f"\n=== Top {len(shown)} papers ({dt:.2f}s retrieval; pool={len(papers)}) ===")
         for p in shown:
             group = f" group={p.get('context_group')}" if args.show_groups else ""
@@ -70,6 +72,8 @@ def main():
             for p in answer_papers:
                 sel = p.get("evidence_selection") or {}
                 print(f"[{p['pmid']}] sel={sel.get('score')} tier={sel.get('evidence_tier')} "
+                      f"centrality={sel.get('management_centrality_score')} "
+                      f"tags={','.join(sel.get('intervention_tags') or [])} "
                       f"exposure={sel.get('exposure_score')} endpoint={sel.get('endpoint_score')} "
                       f"pop={sel.get('population_score')} "
                       f"{(p.get('title') or '')[:90]}")
